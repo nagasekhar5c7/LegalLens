@@ -136,11 +136,24 @@ ORM object.
 | SSE streaming, refusals, incomplete-stream handling | **real** |
 | Audit log, trace, usage ledger, feedback | **real** |
 | Hard delete, verified by test | **real** |
-| Layout-aware parsing (Docling / unstructured) | stub → M4 |
-| OCR (Tesseract / PaddleOCR) | stub → M4 |
-| Embeddings, Qdrant, hybrid retrieval, rerank, parent expansion | stub → M4 |
+| OCR for scanned PDFs — Tesseract or RapidOCR over a pypdfium2 rasteriser | **real**, behind an extra |
+| Embeddings (bge-m3) and vector upsert into Qdrant, on upload | **real**, behind an extra |
+| Encrypted page images for scanned pages | **real**, behind an extra |
+| Layout-aware parsing (Docling / unstructured) | stub |
 | Citation verification gate, groundedness check | stub → M4 |
 | Intent router, query rewriting | keyword heuristics → M4 |
+
+"Behind an extra" means the code is real and tested but its dependencies are
+optional, because `uv sync` with no extras must still produce a backend that
+starts. What a given install will actually do is reported by
+`make ingest-check` and on `GET /readyz`, and recorded per page in
+`document_pages.parse_engine` — a silent fallback is how a demo works on one
+machine and indexes nothing on another.
+
+    make install-all            # dev + ai + retrieval + ocr  (~2.5 GB of wheels)
+    brew install tesseract      # the OCR binary; pip cannot provide it
+    make ingest-check           # which engines resolved, and why not the others
+    make ingest f=nda.pdf q="what is the notice period?"
 
 Each stub sits behind a port in [`app/ingestion/ports.py`](app/ingestion/ports.py)
 or [`app/ai/ports.py`](app/ai/ports.py). The stubs never invent content: a PDF
@@ -148,16 +161,48 @@ with no readable text layer is **quarantined with a reason**, not indexed with
 fabricated text. That is deliberate — an answerable-but-empty document is worse
 than a visible failure (BRD §15).
 
-### What M4 replaces
+### The two ingestion paths
 
-1. `app/ai/engine.py` — return `LangChainEngine()` instead of `FixtureEngine()`.
-2. `app/ingestion/stub/*` — real OCR, layout QA, classifier, indexer.
-3. `StubIndexer.delete_document` becomes a Qdrant filtered delete; FR-26 already
-   calls it.
-4. `chunk_meta.vector_point_id` starts getting values.
+The branch is decided by measurement, not by file extension: `has_no_text_layer`
+compares mean characters per page against `LL_TEXT_LAYER_CHARS_PER_PAGE_FLOOR`,
+because a scanned fax yields a handful of stray characters per page rather than
+zero and a `== 0` check would index the garbage.
 
-No route, schema, service or test changes. `tests/test_layering.py` enforces the
-boundary by scanning imports, so it cannot erode quietly.
+    PDF with a text layer ─┐
+    DOCX                   ├─→ chunk → embed → Qdrant → ready
+    TXT                    │
+    scanned PDF → OCR ─────┘
+
+The gate is per document; the work inside it is per page. Once a file is on the
+OCR branch only its below-floor pages are recognised, so a part-scanned PDF
+keeps the text-layer extraction for the pages that had one. A mostly
+born-digital document with a few scanned exhibits has a mean above the floor and
+so never enters the branch — a known gap, argued in the `pipeline.py` docstring,
+whose fix is the same layout analysis BRD §15 defers.
+
+Everything after the merge is shared: chunking, embedding and indexing never
+learn which branch produced the text, and the only trace of the difference is
+the per-page `ocr_confidence` that the DR-1 gate reads.
+
+### Where indexing is wired
+
+`app/indexing.py` is the only module in the repository that imports both
+`app.ingestion` and `app.ai`, and it exists because `tests/test_layering.py`
+forbids the crossing in both directions: ingestion must not import `app.ai`
+(parsing should not depend on how answers get written) and the AI layer must not
+import `app.models` or `sqlalchemy` (an AI layer that could read the database
+could retrieve a document the scope resolver excluded). It is the same single
+wiring point that `app/ai/engine.py` is for the engine.
+
+### What M4 still replaces
+
+1. `app/ai/engine.py` — return the orchestrated engine instead of `FixtureEngine()`.
+2. `app/ingestion/stub/layout_qa.py` and `classifier.py` — both still heuristic
+   proxies, and both say so.
+3. The citation verification gate and the groundedness check.
+
+No route or schema changes. `tests/test_layering.py` enforces the boundary by
+scanning imports, so it cannot erode quietly.
 
 ---
 

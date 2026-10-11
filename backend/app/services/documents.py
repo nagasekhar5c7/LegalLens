@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import UnaryExpression
 
 from app.config import get_settings
-from app.ingestion.stub import StubIndexer
 from app.models import ChunkMeta, Document, DocumentPage, DocumentSpan, IngestionJob
 from app.models.base import utcnow
 from app.schemas.base import iso
@@ -34,8 +33,6 @@ from app.schemas.documents import (
 from app.storage import blob
 
 log = logging.getLogger("legallens.documents")
-
-INDEXER = StubIndexer()
 
 
 def _rowcount(result: Any) -> int:
@@ -270,9 +267,16 @@ async def hard_delete(db: AsyncSession, document: Document) -> DeletionReport:
         await db.execute(sql_delete(IngestionJob).where(IngestionJob.document_id == document.id))
     )
 
-    # M3: no vector store, so this is 0. At M4 it is a filtered delete, and the
-    # call site does not change.
-    report.vector_points = INDEXER.delete_document(document.id)
+    # FR-26: the vector points go with everything else. A filtered delete when
+    # a vector store is configured, 0 when it is not — and `app/indexing.py`
+    # decides which, so this call site does not change either way.
+    #
+    # Imported here rather than at module scope because resolving the indexer
+    # can open the vector store, and a module that is imported by every document
+    # route should not do that as a side effect of being imported.
+    from app.indexing import get_indexer
+
+    report.vector_points = get_indexer().delete_document(document.id)
 
     blob_key = document.blob_key
     document_id = document.id

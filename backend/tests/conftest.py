@@ -43,11 +43,28 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     # The engine's realistic delays are deliberate; they just should not dominate
     # the suite. `test_timing.py` asserts the real factor separately.
     monkeypatch.setenv("LL_STREAM_DELAY_FACTOR", "0.02")
+    # The ingestion engines are pinned rather than left on `auto`, because
+    # `auto` resolves against what happens to be installed on the machine
+    # running the suite. A developer with `brew install tesseract` would then
+    # see `scanned.pdf` reach `ready` while CI sees it quarantined — the same
+    # test asserting two different things depending on the host. Tests that
+    # want a real engine ask for it explicitly and skip when it is absent.
+    monkeypatch.setenv("LL_OCR_ENGINE", "stub")
+    monkeypatch.setenv("LL_INDEXER", "stub")
+    # Rasterising every scanned page would add seconds per upload test for an
+    # artefact nothing in the suite reads. `test_ingestion_ocr.py` turns it on.
+    monkeypatch.setenv("LL_PAGE_IMAGES", "off")
 
     get_settings.cache_clear()
     resolved = get_settings()
     yield resolved
     get_settings.cache_clear()
+    # The indexer is cached per process and the real one holds a Qdrant
+    # directory lock, so a test that resolved one must drop it or the next test
+    # inherits a store pointing at the previous test's tmp_path.
+    from app.indexing import reset_indexer
+
+    reset_indexer()
 
 
 @pytest.fixture
@@ -68,7 +85,7 @@ async def engine(settings: Settings) -> AsyncIterator[None]:
 @pytest.fixture
 async def app(engine: None, settings: Settings):
     """The real app, with lifespan skipped so no worker pool starts."""
-    from app.main import create_app
+    from app.start import create_app
 
     created = create_app()
     settings.blobs_dir.mkdir(parents=True, exist_ok=True)

@@ -116,16 +116,22 @@ async def test_ingestion_reports_every_step(auth: AsyncClient, worker: None) -> 
 
     status = (await auth.get(f"/api/documents/{document_id}/status")).json()
     labels = [s["label"] for s in status["ingestion"]]
+    # The last label names what step 6 actually did. The suite pins
+    # LL_INDEXER=stub, so no vectors are written and the step says so —
+    # "Embedded & indexed" over an empty collection would read as success to
+    # anyone not counting the points. `test_ingestion_indexing.py` asserts the
+    # other label against a real indexer with a fake store.
     assert labels == [
         "Uploaded",
         "Text extracted",
         "Layout QA passed",
         "Classified",
         "Chunked",
-        "Embedded & indexed",
+        "Indexed without vectors",
     ]
     assert all(s["status"] == "done" for s in status["ingestion"])
     assert status["progress"] == 100
+    assert "not retrievable" in status["ingestion"][-1]["detail"]
 
 
 async def test_ingestion_writes_pages_spans_and_chunks(auth: AsyncClient, worker: None) -> None:
@@ -157,10 +163,15 @@ async def test_ingestion_writes_pages_spans_and_chunks(auth: AsyncClient, worker
     assert len(pages) == 2
     assert all(p.char_count > 0 for p in pages)
     assert spans, "no spans means no resolvable citation"
-    assert chunks, "no chunk_meta means nothing for M4's re-index worker to walk"
-    # M3 has no vector store; the column exists so M4 fills it in.
+    assert chunks, "no chunk_meta means nothing for the re-index worker to walk"
+    # LL_INDEXER=stub in this suite, so nothing was embedded and the column is
+    # NULL. With a real indexer it holds the Qdrant point id — see
+    # `test_ingestion_indexing.py::test_point_ids_land_on_chunk_meta_rows`.
     assert all(c.vector_point_id is None for c in chunks)
     assert all(c.index_version for c in chunks)
+    # Parents and children both get a row, and a child points at its parent.
+    # Without the parent rows there is nothing for parent expansion to fetch.
+    assert any(c.parent_chunk_id for c in chunks), "no child is linked to a parent section"
 
 
 async def test_span_offsets_are_page_local(auth: AsyncClient, worker: None) -> None:

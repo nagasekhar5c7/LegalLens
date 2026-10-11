@@ -23,7 +23,7 @@ sys.path.insert(0, str(BACKEND))
 
 
 def build() -> str:
-    from app.main import create_app
+    from app.start import create_app
 
     spec = create_app().openapi()
     return json.dumps(spec, indent=2, sort_keys=True, ensure_ascii=False) + "\n"

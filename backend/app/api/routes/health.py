@@ -31,5 +31,29 @@ async def readyz() -> dict[str, Any]:
     from app.ingestion.worker import worker_status
 
     checks["ingestion_worker"] = worker_status()
+
+    # NFR-6 again, for the ingestion half: a backend with no OCR engine and no
+    # vector store is *degraded*, not broken — documents still parse, pages and
+    # spans are still real, and the library still works. But "why does search
+    # return nothing" has to be answerable before an upload rather than after
+    # one, so the resolved engines are reported here and not only in the logs.
+    ingestion: dict[str, Any] = {}
+    try:
+        from app.config import get_settings
+        from app.indexing import describe as describe_index
+        from app.ingestion.ocr import describe as describe_ocr
+
+        settings = get_settings()
+        ingestion["ocr"] = describe_ocr(
+            settings.ocr_engine, dpi=settings.ocr_dpi, languages=settings.ocr_languages
+        )
+        ingestion["index"] = describe_index()
+    except Exception as exc:  # noqa: BLE001 — readiness reports, never raises
+        ingestion["error"] = f"{type(exc).__name__}: {exc}"
+
     ready = checks["database"] == "ok"
-    return {"status": "ready" if ready else "degraded", "checks": checks}
+    return {
+        "status": "ready" if ready else "degraded",
+        "checks": checks,
+        "ingestion": ingestion,
+    }

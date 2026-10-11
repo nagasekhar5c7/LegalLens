@@ -1,14 +1,25 @@
+# Backend-specific ignores. Most patterns live in the repo-root .gitignore;
+# these are kept here so the backend directory stays self-contained.
+
+# Local config — holds ANTHROPIC_API_KEY and, in production, LL_BLOB_KEY /
+# LL_SECRET_KEY. Never commit. The committed template is .env.example.
+.env
+.env.*
+!.env.example
+
+# Local database. Globbed so editor/Finder duplicates such as
+# "legallens 2.db-wal" are ignored too.
+legallens*.db
+legallens*.db-shm
+legallens*.db-wal
+
+# Encrypted blob store and the Qdrant index. `data/.dev-secrets.json` holds the
+# dev encryption key — it must never be committed.
+data/
+
 __pycache__/
 *.py[cod]
 .venv/
-.env
-
-# Local database and encrypted store. `data/.dev-secrets.json` holds the dev
-# encryption key — it must never be committed.
-legallens.db
-legallens.db-wal
-legallens.db-shm
-data/
 
 .pytest_cache/
 .mypy_cache/

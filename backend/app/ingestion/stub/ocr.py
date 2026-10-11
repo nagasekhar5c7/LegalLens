@@ -1,9 +1,14 @@
-"""STUB. Real OCR (Tesseract / PaddleOCR) is M4.
+"""The no-OCR fallback, for an install without a real engine.
 
-What this stub does honestly: it reports that OCR *would* be required, produces
-per-page confidences, and lets the pipeline exercise the DR-1 path — flagged
-pages, a mean confidence, and the below-floor failure that quarantines a
-document rather than indexing text nobody should rely on.
+Real OCR now exists in `app/ingestion/ocr/` (Tesseract and RapidOCR). This stub
+is what `LL_OCR_ENGINE=auto` resolves to when neither is installed, and it is
+kept rather than deleted because `uv sync` with no extras must still produce a
+backend that starts and reports honestly.
+
+What it does: reports that OCR *would* be required, produces per-page
+confidences, and lets the pipeline exercise the DR-1 path — flagged pages, a
+mean confidence, and the below-floor failure that quarantines a document rather
+than indexing text nobody should rely on.
 
 What it does not do: invent text. A page with no text layer gets an empty page
 and a low confidence, so the document ends up `failed` with a real reason rather
@@ -20,7 +25,20 @@ from app.ingestion.ports import ParsedPage, ParseResult
 
 
 class StubOcr:
-    name = "ocr/stub-m3"
+    name = "ocr/none"
+
+    def available(self) -> bool:
+        """False, and said out loud. The pipeline uses this to put "no OCR
+        engine is configured" on the document instead of letting an empty
+        result look like an illegible scan."""
+        return False
+
+    def unavailable_reason(self) -> str:
+        return (
+            "no OCR engine is installed. Install one with `uv sync --extra ocr` plus the "
+            "tesseract binary, or `uv sync --extra ocr-onnx` for the no-binary engine, "
+            "and set LL_OCR_ENGINE"
+        )
 
     def run(self, path: str, pages: list[int], *, total_pages: int) -> ParseResult:
         settings = get_settings()
@@ -44,8 +62,8 @@ class StubOcr:
 
         mean = sum(p.ocr_confidence or 0 for p in out) / max(1, len(out))
         warnings = [
-            f"OCR is stubbed in M3: {len(pages)} page(s) have no text layer and no "
-            f"real OCR engine is wired up (mean simulated confidence {mean:.2f}, "
-            f"floor {settings.ocr_confidence_floor:.2f})."
+            f"{len(pages)} page(s) have no text layer and {self.unavailable_reason()} "
+            f"(mean simulated confidence {mean:.2f}, floor "
+            f"{settings.ocr_confidence_floor:.2f})."
         ]
         return ParseResult(pages=out, scanned=True, engine=self.name, warnings=warnings)

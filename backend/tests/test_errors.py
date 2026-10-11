@@ -143,7 +143,7 @@ async def test_client_disconnect_persists_as_incomplete(corpus: AsyncClient) -> 
     import asyncio
     import json
 
-    from app.main import app
+    from app.start import app
 
     conversation = (await corpus.post("/api/conversations", json={})).json()
     body = json.dumps({"text": LIABILITY_Q, "mode": "ask", "scope": WORKSPACE_SCOPE}).encode()

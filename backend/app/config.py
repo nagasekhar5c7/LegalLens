@@ -61,6 +61,39 @@ class Settings(BaseSettings):
     ocr_confidence_floor: float = 0.50
     text_layer_chars_per_page_floor: int = 120
 
+    # --- ingestion: OCR (DR-1) -------------------------------------------
+    #: auto | tesseract | rapidocr | stub. See `app/ingestion/ocr/__init__.py`
+    #: for the full argument; the short version is that `uv sync` with no extras
+    #: must still produce a startable backend, and that backend cannot do OCR.
+    #: `auto` prefers tesseract (per-word confidence, which is what the DR-1
+    #: floor actually needs) over rapidocr (no system binary) over the stub,
+    #: and records which one ran on every page rather than assuming.
+    ocr_engine: Literal["auto", "tesseract", "rapidocr", "stub"] = "auto"
+    #: Tesseract's own floor for 10-12pt body text, which is what a contract is
+    #: set in. 150 measurably loses small print; 600 quadruples the cost and
+    #: buys nothing at this type size.
+    ocr_dpi: int = 300
+    #: Tesseract language data to load. `eng+spa` for a bilingual corpus — each
+    #: extra language costs recognition time, so it is not a free switch.
+    ocr_languages: str = "eng"
+    #: Store a rendered image per page, encrypted, for the viewer to show.
+    #: Scanned pages only by default: a PDF with a text layer is rendered
+    #: client-side by PDF.js, so rasterising it server-side would be pure cost
+    #: and 1-2 MB of ciphertext per page.
+    page_images: Literal["scanned", "all", "off"] = "scanned"
+
+    # --- ingestion: embedding and vector index ---------------------------
+    #: auto | qdrant | stub. `auto` uses the real indexer when the retrieval
+    #: extra is installed and the stub otherwise, reporting which on the
+    #: document. `qdrant` is returned even when unavailable, so a deployment
+    #: that means to index finds out by seeing the reason rather than by
+    #: silently not indexing.
+    indexer: Literal["auto", "qdrant", "stub"] = "auto"
+    #: Texts per embedding call. bge-m3 pads a batch to its longest member, so a
+    #: large batch mixing a short child with a 12,000-character parent wastes
+    #: most of the padded width.
+    embed_batch_size: int = 16
+
     # --- generation ------------------------------------------------------
     generation_budget_s: int = 60
     #: Multiplies every artificial delay in the fixture engine. 1.0 keeps the
