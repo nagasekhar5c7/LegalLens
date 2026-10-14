@@ -56,6 +56,15 @@ class RetrievalResult:
 
     #: Reranked children, best first. The excerpts the UI shows (FR-12).
     hits: list[Hit] = field(default_factory=list)
+    #: Reranked children that fell **below** the floor, best first.
+    #:
+    #: Kept rather than discarded because this is the half of the candidate set
+    #: a retrieval failure is diagnosed from. "Nothing was relevant enough" and
+    #: "the right clause was retrieved and scored 0.24 against a floor of 0.25"
+    #: are different problems with different fixes, and only the second is
+    #: visible if the rejects survive. NFR-11 asks for the candidate set with
+    #: scores; the kept ones alone are not that set.
+    rejected: list[Hit] = field(default_factory=list)
     #: Deduped parent sections, in child-rank order. What generation reads.
     context: list[IndexedChunk] = field(default_factory=list)
     candidate_count: int = 0
@@ -119,11 +128,13 @@ class Retriever:
 
         best = max((h.relevance for h in reranked), default=None)
         kept = [h for h in reranked if h.relevance >= self.relevance_floor]
+        rejected = [h for h in reranked if h.relevance < self.relevance_floor]
         if not kept:
             # FR-14: a structured refusal naming what was searched, not an
             # answer assembled from weakly-related text. `best_relevance` and
             # the floor both ride on the refusal so it can explain itself.
             return RetrievalResult(
+                rejected=rejected,
                 candidate_count=len(candidates),
                 best_relevance=best,
                 timings_ms=timings,
@@ -135,6 +146,7 @@ class Retriever:
 
         return RetrievalResult(
             hits=kept,
+            rejected=rejected,
             context=context,
             candidate_count=len(candidates),
             best_relevance=best,

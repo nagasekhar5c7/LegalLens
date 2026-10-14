@@ -353,25 +353,36 @@ async def _stream_turn(
     )
 
 
-def _dispatch(
+async def _dispatch(
     engine: AiEngine, request: AiRequest, forced_intent: str | None
 ) -> AsyncIterator[StreamEvent]:
-    """Explicit mode goes straight to its workflow; `auto` routes first."""
-    if forced_intent == "ask":
-        return engine.answer(request)
-    if forced_intent == "summary":
-        return engine.summarize(request)
-    if forced_intent == "draft":
-        return engine.draft(request)
+    """Explicit mode goes straight to its workflow; `auto` routes first.
 
-    intent = engine.route_intent(request)
-    if intent == "summary":
-        return engine.summarize(request)
-    if intent == "draft":
-        return engine.draft(request)
-    # `out_of_scope` is handled inside the ask flow, which refuses with the
-    # right message rather than erroring.
-    return engine.answer(request)
+    An async generator rather than a function returning one, because routing is
+    an `await` now: the orchestrated engine classifies with a model call, and
+    the port went async with it. The routing decision is left on
+    `request.trace` by the engine, which is how `answer()` learns the rationale
+    and the `out_of_scope` verdict without paying for a second classification.
+    """
+    if forced_intent == "ask":
+        stream = engine.answer(request)
+    elif forced_intent == "summary":
+        stream = engine.summarize(request)
+    elif forced_intent == "draft":
+        stream = engine.draft(request)
+    else:
+        intent = await engine.route_intent(request)
+        if intent == "summary":
+            stream = engine.summarize(request)
+        elif intent == "draft":
+            stream = engine.draft(request)
+        else:
+            # `out_of_scope` is handled inside the ask flow, which refuses with
+            # the right message rather than erroring.
+            stream = engine.answer(request)
+
+    async for event in stream:
+        yield event
 
 
 def _observe(
@@ -402,8 +413,8 @@ async def _finalise(
                 user_id=user_id,
                 engine_name=get_engine().name,
                 disconnected=disconnected,
-                queries=_queries_from(accumulator),
-                candidates=_candidates_from(accumulator),
+                queries=_queries_from(accumulator, ai_request),
+                candidates=_candidates_from(accumulator, ai_request),
             )
         log.info("turn %s persisted as %s", assistant_id, status_written)
     except Exception:
@@ -412,17 +423,35 @@ async def _finalise(
         log.exception("failed to persist turn %s", assistant_id)
 
 
-def _queries_from(accumulator: turn_service.TurnAccumulator) -> list[str]:
-    """NFR-11: the queries actually run. The refusal carries them explicitly;
-    otherwise the stage details are the best record the engine gives us."""
+def _queries_from(accumulator: turn_service.TurnAccumulator, request: AiRequest) -> list[str]:
+    """NFR-11: the queries actually run.
+
+    The engine reports them on `request.trace` — for the ask workflow that is
+    the *rewritten* query, which is the one retrieval saw and which no stream
+    event carries. The two fallbacks below are for an engine that reports
+    nothing: a refusal states what it looked for, and the stage details are the
+    last resort.
+    """
+    if request.trace.queries:
+        return list(request.trace.queries)
     if accumulator.refusal:
         return list(accumulator.refusal.get("looked_for", []))
     return [s["detail"] for s in accumulator.stages if s.get("detail")]
 
 
-def _candidates_from(accumulator: turn_service.TurnAccumulator) -> list[dict[str, Any]]:
+def _candidates_from(
+    accumulator: turn_service.TurnAccumulator, request: AiRequest
+) -> list[dict[str, Any]]:
     """The candidate set with scores, so a retrieval failure is diagnosable
-    from the trace without re-running the query."""
+    from the trace without re-running the query.
+
+    The engine's own list is preferred because it includes the candidates that
+    were *rejected*, and those are the diagnostically useful ones — an excerpt
+    list can only ever show what survived the floor. Falling back to excerpts
+    keeps a fixture-engine turn traceable.
+    """
+    if request.trace.candidates:
+        return list(request.trace.candidates)
     return [
         {
             "span_id": e["span_id"],

@@ -20,6 +20,22 @@ from app import db as db_module
 from app.config import Settings, get_settings
 
 
+def _reset_ai_caches() -> None:
+    """Drop the AI layer's cached settings and engine.
+
+    `RouterSettings` is `lru_cache`d and reads `backend/.env`, so without this
+    the first test to touch it pins `LL_AI_ENGINE` for the whole session — and a
+    monkeypatched value set by a later fixture is read from a cache that was
+    populated before the patch. The engine is cached for the same reason and
+    holds the settings it resolved from.
+    """
+    from app.ai.engine import reset_engine
+    from app.ai.orchestration.settings import get_router_settings
+
+    get_router_settings.cache_clear()
+    reset_engine()
+
+
 @pytest.fixture(scope="session")
 def anyio_backend() -> str:
     return "asyncio"
@@ -51,14 +67,27 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     # want a real engine ask for it explicitly and skip when it is absent.
     monkeypatch.setenv("LL_OCR_ENGINE", "stub")
     monkeypatch.setenv("LL_INDEXER", "stub")
+    # Same argument, third engine — and this one bites hardest. `LL_AI_ENGINE`
+    # defaults to `auto`, which resolves to the orchestrated engine whenever the
+    # `ai` extra is installed and an API key is present. On a developer's
+    # machine that is both true, so the suite would load bge-m3 and
+    # bge-reranker-v2-m3 (~4.5 GB, downloaded on first use) and then call the
+    # real Anthropic API — turning a 20-second offline suite into a hang that
+    # bills. CI, with no key, would pass. The orchestration layer is tested
+    # directly in `test_{ask,summary,draft}_workflow.py` against fakes, and the
+    # engine adapter in `test_orchestrated_engine.py`; the route tests want the
+    # deterministic fixture stream they were written against.
+    monkeypatch.setenv("LL_AI_ENGINE", "fixture")
     # Rasterising every scanned page would add seconds per upload test for an
     # artefact nothing in the suite reads. `test_ingestion_ocr.py` turns it on.
     monkeypatch.setenv("LL_PAGE_IMAGES", "off")
 
     get_settings.cache_clear()
+    _reset_ai_caches()
     resolved = get_settings()
     yield resolved
     get_settings.cache_clear()
+    _reset_ai_caches()
     # The indexer is cached per process and the real one holds a Qdrant
     # directory lock, so a test that resolved one must drop it or the next test
     # inherits a store pointing at the previous test's tmp_path.

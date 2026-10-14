@@ -3,10 +3,16 @@
 FastAPI backend for Legal Lens: grounded reading and drafting over an attorney's
 own documents. Every output traces to a retrieved span, or the system declines.
 
-This is **M3**. It runs standalone end to end — real auth, real uploads, real
-text extraction, real persistence, real SSE streaming, real deletion — with the
-AI layer behind a three-function port whose only M3 implementation is a
-fixture engine. **M4 swaps one line** in [`app/ai/engine.py`](app/ai/engine.py).
+This is **M4**. It runs standalone end to end — real auth, real uploads, real
+text extraction, real persistence, real SSE streaming, real deletion — and the
+AI layer behind the three-function port is now live: intent routing, query
+rewriting, hybrid retrieval, rerank, grounded generation and the citation gate.
+
+The M3 fixture engine remains behind the same port.
+[`app/ai/engine.py`](app/ai/engine.py) selects between them from `LL_AI_ENGINE`
+(`auto` | `orchestrated` | `fixture`) and `GET /readyz` reports which resolved.
+The swap really was one file — no route, schema or frontend change, which is the
+property the port existed to buy.
 
 ---
 
@@ -55,7 +61,7 @@ make help        # the full list
 Start with [`app/schemas/`](app/schemas/) — those are the wire types, and they
 mirror `frontend/src/api/types.ts`, which is the contract. Then
 [`app/api/routes/turns.py`](app/api/routes/turns.py) for the streaming path, and
-[`app/ai/ports.py`](app/ai/ports.py) for the boundary M4 lands behind.
+[`app/ai/ports.py`](app/ai/ports.py) for the boundary the AI layer sits behind.
 
 ```
 app/
@@ -73,7 +79,21 @@ app/
 ├─ services/          auth conversations documents scope turns usage audit
 ├─ storage/           AES-256-GCM blob store, signed read URLs
 ├─ ingestion/         queue, worker, pipeline, validation, parsers, stubs
-└─ ai/                ports, engine provider, fixture engine, fixtures
+└─ ai/
+   ├─ ports.py        AiEngine, AiRequest, TurnTrace — the whole boundary
+   ├─ engine.py       the one place an engine is chosen
+   ├─ orchestrated_engine.py   the M4 adapter
+   ├─ fixture_engine.py        the M3 implementation
+   ├─ fixtures/       the scripted corpus the fixture engine serves
+   └─ orchestration/
+      ├─ router.py       intent classification (Haiku 4.5)
+      ├─ rewriter.py     pre-retrieval query rewriting (Haiku 4.5)
+      ├─ citations.py    the FR-21/FR-22 gate and the sentence gate
+      ├─ context.py      retrieved text, fenced as data not instructions
+      ├─ templates.py    the summary schemas and draft section plans
+      ├─ prompts/        one *.prompt.md per call, version-stamped by content hash
+      ├─ retrieval/      bge-m3, Qdrant, the cross-encoder, the write path
+      └─ workflows/      ask · summary · draft, plus shared generation helpers
 ```
 
 ### The wire is camelCase
@@ -139,9 +159,13 @@ ORM object.
 | OCR for scanned PDFs — Tesseract or RapidOCR over a pypdfium2 rasteriser | **real**, behind an extra |
 | Embeddings (bge-m3) and vector upsert into Qdrant, on upload | **real**, behind an extra |
 | Encrypted page images for scanned pages | **real**, behind an extra |
+| Intent routing (Haiku 4.5, structured output) | **real**, behind an extra |
+| Query rewriting for follow-ups (Haiku 4.5) | **real**, behind an extra |
+| Hybrid retrieval, RRF fusion, cross-encoder rerank, parent expansion | **real**, behind an extra |
+| Ask / Summary / Draft generation (Sonnet 5) | **real**, behind an extra |
+| Citation resolution and the FR-22 authority gate | **real**, behind an extra |
+| Groundedness check | **real**, reported not enforced — M5 calibrates it |
 | Layout-aware parsing (Docling / unstructured) | stub |
-| Citation verification gate, groundedness check | stub → M4 |
-| Intent router, query rewriting | keyword heuristics → M4 |
 
 "Behind an extra" means the code is real and tested but its dependencies are
 optional, because `uv sync` with no extras must still produce a backend that
@@ -194,15 +218,58 @@ import `app.models` or `sqlalchemy` (an AI layer that could read the database
 could retrieve a document the scope resolver excluded). It is the same single
 wiring point that `app/ai/engine.py` is for the engine.
 
-### What M4 still replaces
+### How the AI layer is wired
 
-1. `app/ai/engine.py` — return the orchestrated engine instead of `FixtureEngine()`.
-2. `app/ingestion/stub/layout_qa.py` and `classifier.py` — both still heuristic
+```
+app/ai/
+├─ ports.py              AiEngine, AiRequest, TurnTrace — the whole boundary
+├─ engine.py             the one place an engine is chosen (LL_AI_ENGINE)
+├─ orchestrated_engine.py  ← the M4 adapter: AiRequest ⇄ orchestration
+├─ fixture_engine.py     the M3 implementation, still selectable
+└─ orchestration/        router · rewriter · retrieval · citation gate · workflows
+```
+
+`orchestrated_engine.py` is the only module that imports both the port and the
+orchestration layer, and it has three jobs: adapt `AiRequest` into each
+workflow's arguments and each workflow's outcome back into `TurnTrace`; emit the
+turn's envelope events (`stage(routing)` → `intent` → `scope`), which belong to
+the turn rather than to any one workflow; and decide the three things that
+precede a workflow — whether anything is in scope at all, whether the router
+said this is not something Legal Lens does, and which document a summary is of.
+
+The workflows themselves never import the port. That is enforced
+(`test_layering.py::test_the_orchestration_layer_does_not_import_the_port`) and
+it is what keeps them drivable from `scripts/try_ask.py` and testable with
+literals.
+
+The three topologies differ, and each module's docstring argues why:
+
+| | retrieval | generation | FR-22 on a fabricated cite |
+|---|---|---|---|
+| **Ask** | once | streamed, sentence-gated | halts the stream → refusal |
+| **Summary** | once *per template field* | per field | withholds that field, keeps the rest |
+| **Draft** | once | per section, each seeing the last | withholds the **whole** draft |
+
+Summary's per-field retrieval is what makes a 312-page agreement summarisable:
+one top-10 over "summarise this agreement" answers the nine fields from whatever
+the document talks about most. Draft's all-or-nothing gate is the opposite call
+from Summary's for a reason — a summary is nine independent findings and losing
+one leaves eight useful ones, whereas a memo is one argument, and a Short Answer
+whose Discussion was withheld asserts a conclusion whose support has been
+removed while still reading as finished work.
+
+### What M5 still replaces
+
+1. `app/ingestion/stub/layout_qa.py` and `classifier.py` — both still heuristic
    proxies, and both say so.
-3. The citation verification gate and the groundedness check.
+2. `LL_AI_RELEVANCE_FLOOR` and `LL_AI_GROUNDEDNESS_FLOOR` — defensible defaults
+   carried over from the M3 fixture's scale, not yet calibrated against a
+   labelled set. The groundedness check reports rather than enforces until it is.
+3. The eval harness: the prompts carry labelled example tables that the tests
+   read, but nothing scores a run against a gold set yet.
 
-No route or schema changes. `tests/test_layering.py` enforces the boundary by
-scanning imports, so it cannot erode quietly.
+`tests/test_layering.py` enforces every boundary above by scanning imports, so
+none of it can erode quietly.
 
 ---
 

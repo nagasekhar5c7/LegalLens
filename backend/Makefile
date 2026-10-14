@@ -1,6 +1,6 @@
 # Legal Lens backend. `make help` lists everything.
 .DEFAULT_GOAL := help
-.PHONY: help install install-all dev run migrate migration seed reset test test-fast lint typecheck fmt check openapi router ingest ingest-check index index-stats ask clean
+.PHONY: help install install-all dev run migrate migration seed reset test test-fast lint typecheck fmt check openapi router ingest ingest-check index index-stats ask turn engine clean
 
 UV ?= uv
 
@@ -72,6 +72,13 @@ index-stats: ## Show what is currently indexed
 ask: ## Ask the indexed corpus — make ask q="what is the liability cap?". Costs money.
 	@test -n "$(q)" || (echo 'usage: make ask q="your question"' && exit 1)
 	$(UV) run python scripts/try_ask.py "$(q)"
+
+turn: ## Run one turn through the real engine — make turn q="..." [mode=summary|draft]. Costs money.
+	@test -n "$(q)" || (echo 'usage: make turn q="your question" [mode=auto|ask|summary|draft]' && exit 1)
+	$(UV) run python scripts/try_turn.py $(if $(mode),--mode $(mode),) "$(q)"
+
+engine: ## Report which AI engine would actually answer a turn, and why
+	$(UV) run python -c "import json; from app.ai.engine import describe; print(json.dumps(describe(), indent=2))"
 
 openapi: ## Regenerate openapi.json
 	$(UV) run python scripts/export_openapi.py

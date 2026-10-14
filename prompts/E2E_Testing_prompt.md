@@ -1,0 +1,7 @@
+now that the application has been implemented end to end, I want you to test this application starting from the UI, testing all the features in the UI, and then see whether you are getting the right responses from the backend or not. Write some test cases and then see if you can test all those things. If needed, you can also use Playwright for testing this application end to end. Not only test this application end to end, but try to test primarily in three scenarios:
+1. Create a conversation.
+2. Rename a conversation.
+3. Delete a conversation.
+Within the conversation, ask a question and then see what the response from the LLM is. See whether you are getting proper citations or not.
+In the new conversation, try to select the existing document and then ask LegalLens to summarize it. In addition to that, create a new conversation, upload a new document, and then ask LegalLens to summarize it with the summarize workflow.
+Similarly, in the third conversation, I want you to test a drafting thing where you ask the LLM to draft a memo. I just want one use case where you want to test the draft piece as well. In addition to this, if there are any other pieces to test within the UI, you are free to test. I want to have comprehensive testing that has to be done.

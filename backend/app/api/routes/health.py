@@ -51,9 +51,22 @@ async def readyz() -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 — readiness reports, never raises
         ingestion["error"] = f"{type(exc).__name__}: {exc}"
 
+    # The generation half of the same argument. `LL_AI_ENGINE=auto` on a
+    # checkout with no API key starts, serves, and answers every question from
+    # a scripted fixture — which is indistinguishable from working unless
+    # something says so. `generation.grounded` is that something.
+    generation: dict[str, Any] = {}
+    try:
+        from app.ai.engine import describe as describe_engine
+
+        generation = describe_engine()
+    except Exception as exc:  # noqa: BLE001 — readiness reports, never raises
+        generation["error"] = f"{type(exc).__name__}: {exc}"
+
     ready = checks["database"] == "ok"
     return {
         "status": "ready" if ready else "degraded",
         "checks": checks,
         "ingestion": ingestion,
+        "generation": generation,
     }

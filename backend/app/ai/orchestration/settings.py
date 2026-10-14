@@ -161,6 +161,32 @@ class RouterSettings(BaseSettings):
     #: for the whole answer rather than one short classification.
     ask_timeout_s: float = 120.0
 
+    # --- generation: summary ---------------------------------------------
+    #: Sonnet 5 again. Field extraction is the same job as answering — read
+    #: passages, report what they say, refuse to infer — and a cheaper model is
+    #: measurably worse at the one thing that matters here, which is saying
+    #: "absent" instead of writing the clause it expects to find.
+    summary_model: str = "claude-sonnet-5"
+    #: Per *field*, not per summary. A field value runs a few sentences; this is
+    #: generous so a truncation is never mistaken for a terse finding.
+    summary_max_tokens: int = 1024
+    summary_timeout_s: float = 90.0
+    #: Ceiling on fields retrieved and extracted per summary. Cost and latency
+    #: are linear in this, and NFR-3 gives a summary three minutes. Above every
+    #: current template's length, so it changes nothing today and exists so a
+    #: longer template added later cannot quietly double the bill.
+    summary_max_fields: int = 16
+
+    # --- generation: draft -----------------------------------------------
+    draft_model: str = "claude-sonnet-5"
+    #: Per *section*. A Discussion is the long one.
+    draft_max_tokens: int = 2048
+    draft_timeout_s: float = 120.0
+    #: Characters of each already-written section carried into the next call, so
+    #: the document reads as one piece. Truncated from the front, keeping each
+    #: section's conclusion — see `DraftWorkflow._written_block`.
+    draft_history_chars: int = 1200
+
     # --- the citation gate (FR-21, FR-22) --------------------------------
     #: Minimum lexical overlap between a cited sentence and its source.
     #: Reported on the trace by default rather than enforced: it is a proxy for
@@ -175,6 +201,23 @@ class RouterSettings(BaseSettings):
     #: declines, so `router.py` checks the estimate and logs what happened
     #: rather than letting a dead marker look like a working optimisation.
     cache_system_prompt: bool = True
+
+    # --- which engine answers a turn -------------------------------------
+    #: auto | orchestrated | fixture.
+    #:
+    #: `auto` resolves to the orchestrated engine when its two hard
+    #: prerequisites are met — an API key and the `ai` extra installed — and to
+    #: the fixture engine otherwise, reporting which on `/readyz`. The same
+    #: shape as `LL_INDEXER` and `LL_OCR_ENGINE`, and for the same reason:
+    #: `uv sync` with no extras has to produce a startable backend, and that
+    #: backend cannot reach a model.
+    #:
+    #: `orchestrated` is returned **even when unavailable**, so a deployment
+    #: that means to use the real AI layer finds out by seeing the reason rather
+    #: than by silently serving fixtures. That distinction is the whole point of
+    #: having three values instead of a boolean: a demo that quietly answers
+    #: from scripted fixtures looks exactly like one that works.
+    engine: Literal["auto", "orchestrated", "fixture"] = "auto"
 
     @property
     def has_credentials(self) -> bool:

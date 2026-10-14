@@ -50,16 +50,44 @@ The build plans are kept as working documents rather than history:
 
 ## Where it stands
 
-The frontend and backend are integrated and run end to end — real session auth, real uploads with
-real text extraction, real persistence, real SSE streaming, real hard deletion. The **AI layer is a
-port with one implementation**: a server-side fixture engine behind
-`backend/app/ai/ports.py`. Retrieval, embeddings, the citation gate and the groundedness check are
-M4, and they land behind that boundary without a route, a schema or a frontend file changing.
+Integrated end to end, and the answers are real. Session auth, uploads with real text extraction,
+persistence, SSE streaming, hard deletion — and behind `backend/app/ai/ports.py`, a live
+orchestration layer: a Haiku intent router, pre-retrieval query rewriting, hybrid retrieval (bge-m3
+dense + learned sparse into Qdrant, fused by RRF), a bge-reranker-v2-m3 cross-encoder, child →
+parent expansion, generation on Sonnet 5, and the FR-21/FR-22 citation gate that stops a stream
+mid-sentence rather than emit a citation it cannot resolve to a source you supplied.
 
-What that means in practice: the plumbing, the contract and every failure path are real and
-verifiable today. The answers are scripted.
+All three workflows are implemented. **Ask** retrieves once and streams token by token. **Summary**
+retrieves once *per template field* and reports an absent term as absent rather than inferring it.
+**Draft** retrieves once and composes section by section, and withholds the whole document if any
+section cites authority the sources do not contain.
+
+The M3 fixture engine is still there, behind the same port, and the two are selected by
+`LL_AI_ENGINE`:
+
+```
+LL_AI_ENGINE=orchestrated   # the real thing; fails loudly if it cannot run
+LL_AI_ENGINE=fixture        # scripted answers, deterministic, offline, free
+LL_AI_ENGINE=auto           # orchestrated when it can run, fixture otherwise
+```
+
+`auto` is the default and it degrades, because `uv sync` with no extras has to produce a startable
+backend. That degradation is *reported*, never silent — `GET /readyz` carries
+`generation.grounded`, because a demo answering from scripted fixtures looks exactly like one that
+works.
 
 ```bash
-cd backend && make check      # ruff · mypy --strict · openapi freshness · 156 tests
+cd backend && make check      # ruff · mypy --strict · openapi freshness · 510 tests
+cd backend && make engine     # which engine would answer a turn, and why
 cd frontend && npm run build  # tsc --noEmit + production build
+```
+
+The whole AI layer is testable offline — fake retriever, fake chat model, no key, no downloads —
+and exercisable live against the real models:
+
+```bash
+make install-all                                   # + ai + retrieval (~2.5 GB)
+make index src=../docs                             # embed a corpus into Qdrant
+make turn q="What happens on a change of control?"  # one turn through the real engine
+make turn q="Summarise it" mode=summary
 ```

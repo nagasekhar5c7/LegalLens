@@ -37,6 +37,46 @@ def _imports(path: Path) -> set[str]:
     return found
 
 
+def _runtime_imports(path: Path) -> set[str]:
+    """Imports that actually execute, excluding `if TYPE_CHECKING:` blocks.
+
+    The distinction is load-bearing rather than pedantic. A module may name a
+    type it never imports at runtime, and that is how
+    `orchestration/intent.py` annotates `RouterInput.from_ai_request(request:
+    AiRequest)` without taking a dependency on the port — the annotation is a
+    string under `from __future__ import annotations`, and the import is erased.
+    A rule that could not tell the two apart would forbid the type hint along
+    with the dependency.
+    """
+    tree = ast.parse(path.read_text(), filename=str(path))
+
+    guarded: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and _is_type_checking(node.test):
+            for inner in node.body:
+                for descendant in ast.walk(inner):
+                    guarded.add(id(descendant))
+
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if id(node) in guarded:
+            continue
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            found.add(node.module)
+            found.update(f"{node.module}.{alias.name}" for alias in node.names)
+    return found
+
+
+def _is_type_checking(test: ast.expr) -> bool:
+    if isinstance(test, ast.Name):
+        return test.id == "TYPE_CHECKING"
+    if isinstance(test, ast.Attribute):
+        return test.attr == "TYPE_CHECKING"
+    return False
+
+
 def _modules_in(package: str) -> list[Path]:
     return sorted((APP / package).rglob("*.py"))
 
@@ -66,15 +106,25 @@ def test_routes_reach_the_ai_layer_only_through_its_ports() -> None:
 
 
 def test_only_the_provider_constructs_an_engine() -> None:
-    """One wiring point, so M4 swaps one line in one file."""
-    constructing = sorted(
-        path.relative_to(APP).as_posix()
-        for path in APP.rglob("*.py")
-        if "FixtureEngine()" in path.read_text() and path.name != "fixture_engine.py"
-    )
-    assert constructing == ["ai/engine.py"], (
-        f"the engine is constructed outside its provider: {constructing}"
-    )
+    """One wiring point. Both implementations are selected in the same file.
+
+    The rule outlived the M4 swap it was written for: with two engines, "which
+    one am I talking to" has to have a single answer, and a second construction
+    site is how a route ends up pinned to fixtures while `/readyz` reports the
+    orchestrated engine.
+    """
+    for engine in ("FixtureEngine()", "OrchestratedEngine()"):
+        home = f"{engine[:-2].lower()}.py".replace("fixtureengine", "fixture_engine").replace(
+            "orchestratedengine", "orchestrated_engine"
+        )
+        constructing = sorted(
+            path.relative_to(APP).as_posix()
+            for path in APP.rglob("*.py")
+            if engine in path.read_text() and path.name != home
+        )
+        assert constructing == ["ai/engine.py"], (
+            f"{engine} is constructed outside its provider: {constructing}"
+        )
 
 
 def test_ai_layer_does_not_import_the_database() -> None:
@@ -111,6 +161,42 @@ def test_fixture_engine_satisfies_the_port() -> None:
         assert callable(getattr(engine, method)), f"{method} is missing from the engine"
     for attr in ("name", "prompt_version", "model_version", "index_version"):
         assert getattr(engine, attr), f"{attr} is unset — NFR-12 needs it stamped"
+
+
+def test_orchestrated_engine_satisfies_the_port() -> None:
+    """The same assertions, against the implementation that actually answers.
+
+    Constructed without credentials and without the retrieval extra, which is
+    the point: if building the engine loaded a model or opened a client, this
+    test could not run in CI, and `/readyz` could not report on it either.
+    """
+    from app.ai.orchestrated_engine import OrchestratedEngine
+    from app.ai.ports import AiEngine
+
+    engine = OrchestratedEngine()
+    assert isinstance(engine, AiEngine)
+    for method in ("answer", "summarize", "draft", "route_intent"):
+        assert callable(getattr(engine, method)), f"{method} is missing from the engine"
+    for attr in ("name", "prompt_version", "model_version", "index_version"):
+        assert getattr(engine, attr), f"{attr} is unset — NFR-12 needs it stamped"
+
+
+def test_the_orchestration_layer_does_not_import_the_port() -> None:
+    """Direction of the adapter: the engine knows both sides, the workflows
+    know only their own.
+
+    A workflow that imported `AiRequest` could not be driven by
+    `scripts/try_ask.py` or tested with a literal, and `TurnTrace` would start
+    being filled in two places."""
+    offenders: list[str] = []
+    for path in sorted((APP / "ai" / "orchestration").rglob("*.py")):
+        for imported in _runtime_imports(path):
+            if imported.startswith("app.ai.ports"):
+                offenders.append(f"{path.relative_to(APP)} imports {imported}")
+    assert not offenders, (
+        "the orchestration layer must not import the port at runtime — the adapter "
+        "is app/ai/orchestrated_engine.py:\n" + "\n".join(f"  - {o}" for o in offenders)
+    )
 
 
 def test_services_do_not_import_routes() -> None:

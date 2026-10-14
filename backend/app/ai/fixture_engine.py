@@ -114,8 +114,11 @@ class FixtureEngine:
     index_version = "fixtures:legallens-m3 (2026-10-02)"
 
     # ------------------------------------------------------------- routing
-    def route_intent(self, request: AiRequest) -> str:
+    async def route_intent(self, request: AiRequest) -> str:
         """Keyword heuristics standing in for the LLM classifier.
+
+        Async only to satisfy the port, which went async when routing became a
+        real model call. Nothing in here awaits.
 
         An explicit mode chip wins outright — the architecture makes the router
         overridable, and an invisible decision the user cannot override is the
@@ -190,7 +193,7 @@ class FixtureEngine:
                 )
             )
 
-        intent = forced_intent or self.route_intent(request)
+        intent = forced_intent or await self.route_intent(request)
         if request.scenario == "refusal":
             intent = "ask"
 

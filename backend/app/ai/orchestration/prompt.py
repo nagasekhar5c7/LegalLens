@@ -31,6 +31,16 @@ _SYSTEM_END = "<!-- SYSTEM PROMPT END -->"
 _FRONT_MATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 _EXAMPLE_ROW = re.compile(r"^\|(?!\s*-)(.+)\|\s*$", re.M)
 
+#: First-column names that mark a table *header* rather than a case.
+#:
+#: One set rather than a literal per call site: the gold table's first column is
+#: named for what the prompt classifies, so it is `question` for the router,
+#: `field` for summary extraction and `section` for draft generation. A header
+#: not listed here is silently parsed as a labelled example, which shows up as a
+#: phantom case with `expected="expect"` — a test asserting on the gold set then
+#: fails for a reason that has nothing to do with the gold set.
+_HEADER_CELLS = frozenset({"question", "request", "field", "section", "input"})
+
 
 class PromptFileError(RuntimeError):
     """The prompt file is missing or malformed.
@@ -133,7 +143,7 @@ def _table_cells(block: str) -> set[str]:
     cells: set[str] = set()
     for row in _EXAMPLE_ROW.finditer(block):
         first = row.group(1).split("|")[0].strip().strip('"').rstrip(".?!").casefold()
-        if first and first != "request":
+        if first and first not in _HEADER_CELLS:
             cells.add(first)
     return cells
 
@@ -152,7 +162,7 @@ def _examples(raw: str) -> tuple[Example, ...]:
     found: list[Example] = []
     for row in _EXAMPLE_ROW.finditer(tail):
         cells = [c.strip() for c in row.group(1).split("|")]
-        if len(cells) < 3 or cells[0].casefold() == "question":
+        if len(cells) < 3 or cells[0].casefold() in _HEADER_CELLS:
             continue
         question = cells[0]
         found.append(

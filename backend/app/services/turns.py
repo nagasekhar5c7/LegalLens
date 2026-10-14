@@ -310,6 +310,15 @@ async def finalise(
                     "latency_ms": (accumulator.usage or {}).get("latency_ms"),
                     "ttft_ms": (accumulator.usage or {}).get("time_to_first_token_ms"),
                     "engine": engine_name,
+                    # NFR-11 per stage, and NFR-8 per call. The `usage` event
+                    # carries the turn's total; `calls` says where it went,
+                    # which a turn spending on Haiku for routing, Haiku for the
+                    # rewrite and Sonnet for generation needs in order to be
+                    # attributable at all. `detail` holds the routing decision,
+                    # the rewrite and what the citation gate did.
+                    "stages_ms": dict(request.trace.timings_ms) or None,
+                    "calls": list(request.trace.calls) or None,
+                    "detail": dict(request.trace.detail) or None,
                 },
                 versions_json=versions or None,
             )
@@ -329,6 +338,33 @@ async def finalise(
                 latency_ms=float(usage.get("latency_ms", 0.0)),
                 ttft_ms=usage.get("time_to_first_token_ms"),
                 model=versions.get("model"),
+            )
+        )
+
+    # NFR-8 wants spend attributable per request, and a turn is no longer one
+    # call: routing and the query rewrite run on Haiku, generation on Sonnet,
+    # and a nine-field summary runs nine generation calls. The `kind="turn"` row
+    # above stays as the turn's total — reports and budget checks read it, and
+    # changing what it means would silently double every historical figure —
+    # and these rows sit beside it saying where it went.
+    #
+    # Grouped by phase rather than one row per call, for two reasons.
+    # `UsageTransaction.kind` is `String(16)`, which `call:summary:liability`
+    # does not fit; and a row per call puts ten rows on every summary turn for
+    # a breakdown nobody aggregates at that grain. The per-field detail is on
+    # the trace, which is where it is actually read.
+    for kind, grouped in _group_calls(request.trace.calls).items():
+        db.add(
+            UsageTransaction(
+                user_id=user_id,
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                kind=kind,
+                input_tokens=grouped["input_tokens"],
+                output_tokens=grouped["output_tokens"],
+                usd=grouped["usd"],
+                latency_ms=grouped["latency_ms"],
+                model=grouped["model"],
             )
         )
 
@@ -367,6 +403,47 @@ async def finalise(
 
     await db.commit()
     return status
+
+
+#: Trace stage -> `UsageTransaction.kind`. Every value is <= 16 characters,
+#: which is the column's width; an unrecognised stage is bucketed rather than
+#: truncated, because a silently clipped kind would split one phase's spend
+#: across two labels in every report that groups by it.
+_USAGE_KIND: dict[str, str] = {
+    "routing": "routing",
+    "rewrite": "rewrite",
+    "generate": "generate",
+}
+
+
+def _group_calls(calls: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per-call usage, summed per phase.
+
+    The model recorded is the first one seen for that phase. Within a phase it
+    is the same model by construction — all nine summary fields run on
+    `summary_model` — so this is a fact rather than an approximation.
+    """
+    grouped: dict[str, dict[str, Any]] = {}
+    for call in calls:
+        stage = str(call.get("stage", "")).split(":", 1)[0]
+        kind = _USAGE_KIND.get(stage, "generate")
+        row = grouped.setdefault(
+            kind,
+            {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "usd": 0.0,
+                "latency_ms": 0.0,
+                "model": call.get("model"),
+            },
+        )
+        row["input_tokens"] += int(call.get("input_tokens", 0))
+        row["output_tokens"] += int(call.get("output_tokens", 0))
+        row["usd"] += float(call.get("usd", 0.0))
+        row["latency_ms"] += float(call.get("latency_ms", 0.0))
+    for row in grouped.values():
+        row["usd"] = round(row["usd"], 6)
+    return grouped
 
 
 async def find_replay(db: AsyncSession, user_id: str, idempotency_key: str) -> Message | None:

@@ -40,8 +40,10 @@ from app.ai.orchestration.citations import CITE_MARKER, CitationGate, SentenceGa
 from app.ai.orchestration.intent import Usage as CallUsage
 from app.ai.orchestration.prompt import IntentPrompt, load_named_prompt
 from app.ai.orchestration.retrieval.pipeline import RetrievalResult, Retriever
+from app.ai.orchestration.retrieval.ports import IndexedChunk
 from app.ai.orchestration.rewriter import QueryRewriter, RewriteResult
 from app.ai.orchestration.settings import RouterSettings, get_router_settings
+from app.ai.orchestration.workflows import generation as gen
 from app.ai.orchestration.workflows.stages import StageClock
 from app.schemas.common import (
     ApiError,
@@ -74,10 +76,6 @@ The attorney's question:
 <question>
 {question}
 </question>"""
-
-#: Characters of context either side of an excerpt, so the evidence panel shows
-#: the passage in situ rather than a bare fragment (FR-12).
-_EXCERPT_PAD = 180
 
 
 @dataclass
@@ -125,29 +123,12 @@ class AskWorkflow:
         self._model = chat_model if chat_model is not None else self._build_model()
 
     def _build_model(self) -> Any:
-        from langchain_anthropic import ChatAnthropic
-
-        from app.ai.orchestration.router import RouterUnavailable
-
-        if not self.settings.has_credentials:
-            raise RouterUnavailable(
-                "No Anthropic credentials. Set ANTHROPIC_API_KEY (or LL_AI_API_KEY)."
-            )
-        kwargs: dict[str, Any] = {
-            "model": self.settings.ask_model,
-            "max_tokens": self.settings.ask_max_tokens,
-            "timeout": self.settings.ask_timeout_s,
-            "max_retries": self.settings.max_retries,
-            "api_key": self.settings.api_key,
-        }
-        # Only sent when explicitly configured. Sampling parameters were
-        # removed on the 4.6-and-later models, so passing `temperature` to
-        # claude-sonnet-5 returns 400 "temperature is deprecated for this
-        # model" — and it fails at generation time, after retrieval has already
-        # been paid for.
-        if self.settings.ask_temperature is not None:
-            kwargs["temperature"] = self.settings.ask_temperature
-        return ChatAnthropic(**kwargs)
+        return gen.build_chat_model(
+            self.settings,
+            model=self.settings.ask_model,
+            max_tokens=self.settings.ask_max_tokens,
+            timeout=self.settings.ask_timeout_s,
+        )
 
     # ------------------------------------------------------------------ run
 
@@ -173,7 +154,7 @@ class AskWorkflow:
         # ---------------------------------------------------- pre-retrieval
         rewrite = await self._rewrite(question, history)
         result.rewrite = rewrite
-        result.usage = _add(result.usage, rewrite.usage)
+        result.usage = gen.add(result.usage, rewrite.usage)
         query = rewrite.query
 
         # ---------------------------------------------------------- retrieve
@@ -232,7 +213,15 @@ class AskWorkflow:
             yield event
 
         assembled = context_mod.assemble(retrieval.context)
-        result.excerpts = [_excerpt(h.chunk, h.relevance) for h in retrieval.hits]
+        parents = _parents_by_key(retrieval.context)
+        result.excerpts = [
+            gen.excerpt_for(
+                h.chunk,
+                h.relevance,
+                parent=parents.get((h.chunk.document_id, h.chunk.parent_key or "")),
+            )
+            for h in retrieval.hits
+        ]
         for excerpt in result.excerpts:
             yield ExcerptEvent(excerpt=excerpt)
 
@@ -250,7 +239,7 @@ class AskWorkflow:
             strip_ungrounded=self.settings.strip_ungrounded_citations,
         )
         sentence_gate = SentenceGate(gate)
-        citations = _citations(assembled.chunks)
+        citations = gen.citations_for(assembled.chunks)
 
         yield clock.open("writing", f"{self.model_name} over {assembled.source_count} sources")
 
@@ -291,7 +280,7 @@ class AskWorkflow:
             )
             return
 
-        result.usage = _add(result.usage, call_usage)
+        result.usage = gen.add(result.usage, call_usage)
         yield clock.close("writing")
 
         # ------------------------------------------------------ verify (FR-21/22)
@@ -380,15 +369,8 @@ class AskWorkflow:
             question=question,
         )
 
-        total = CallUsage()
-        async for part in self._model.astream(messages):
-            text = _text_of(part)
-            if text:
-                yield text, None
-            meta = getattr(part, "usage_metadata", None)
-            if meta:
-                total = _usage_from_meta(meta)
-        yield "", total
+        async for part in gen.stream_text(self._model, messages):
+            yield part
 
     def _refusal(
         self,
@@ -443,7 +425,7 @@ class AskWorkflow:
             usage=Usage(
                 input_tokens=u.input_tokens,
                 output_tokens=u.output_tokens,
-                usd=_usd(u, self.model_name),
+                usd=gen.usd(u, self.model_name),
                 latency_ms=u.latency_ms,
                 time_to_first_token_ms=result.timings_ms.get("ttft_ms", 0.0),
             ),
@@ -463,88 +445,12 @@ def _markers(text: str) -> list[int]:
     return [int(m.group(1)) for m in CITE_MARKER.finditer(text)]
 
 
-def _text_of(part: Any) -> str:
-    """LangChain chunk content is a string or a list of content blocks."""
-    content = getattr(part, "content", "")
-    if isinstance(content, str):
-        return content
-    out = []
-    for block in content or []:
-        if isinstance(block, str):
-            out.append(block)
-        elif isinstance(block, dict) and block.get("type") == "text":
-            out.append(str(block.get("text", "")))
-    return "".join(out)
+def _parents_by_key(context: list[IndexedChunk]) -> dict[tuple[str, str], IndexedChunk]:
+    """Expanded parents, keyed as `pipeline._expand` keys them.
 
-
-def _usage_from_meta(meta: dict[str, Any]) -> CallUsage:
-    details = meta.get("input_token_details") or {}
-    return CallUsage(
-        input_tokens=int(meta.get("input_tokens") or 0),
-        output_tokens=int(meta.get("output_tokens") or 0),
-        cache_read_input_tokens=int(details.get("cache_read") or 0),
-        cache_creation_input_tokens=int(details.get("cache_creation") or 0),
-    )
-
-
-def _add(a: CallUsage, b: CallUsage) -> CallUsage:
-    return CallUsage(
-        input_tokens=a.input_tokens + b.input_tokens,
-        output_tokens=a.output_tokens + b.output_tokens,
-        cache_read_input_tokens=a.cache_read_input_tokens + b.cache_read_input_tokens,
-        cache_creation_input_tokens=a.cache_creation_input_tokens + b.cache_creation_input_tokens,
-        latency_ms=a.latency_ms + b.latency_ms,
-    )
-
-
-#: Per-MTok input/output, by model. `CallUsage.usd` hardcodes Haiku, which is
-#: right for the router but wrong for a turn that also ran Sonnet.
-_PRICES: dict[str, tuple[float, float]] = {
-    "claude-haiku-4-5": (1.00, 5.00),
-    "claude-sonnet-5": (2.00, 10.00),
-    "claude-opus-5": (5.00, 25.00),
-}
-
-
-def _usd(usage: CallUsage, model: str) -> float:
-    """Approximate: the rewrite ran on Haiku and generation on Sonnet, and these
-    totals are summed. Attributed at the generation model's rate, which is the
-    dominant term by an order of magnitude. Exact per-call attribution is a
-    `UsageTransaction` row per call at integration, not an engine concern."""
-    rate_in, rate_out = _PRICES.get(model, (2.00, 10.00))
-    return (
-        usage.input_tokens * rate_in
-        + usage.cache_read_input_tokens * rate_in * 0.1
-        + usage.cache_creation_input_tokens * rate_in * 1.25
-        + usage.output_tokens * rate_out
-    ) / 1_000_000
-
-
-def _excerpt(chunk: Any, relevance: float) -> Excerpt:
-    text = chunk.text.strip()
-    return Excerpt(
-        span_id=chunk.span_id,
-        document_id=chunk.document_id,
-        document_name=chunk.document_name,
-        page=chunk.page_from,
-        section=chunk.section_path,
-        before="",
-        text=text[: _EXCERPT_PAD * 4],
-        after="",
-        relevance=round(relevance, 3),
-    )
-
-
-def _citations(chunks: list[Any]) -> list[Citation]:
-    return [
-        Citation(
-            n=i,
-            span_id=c.span_id,
-            document_id=c.document_id,
-            document_name=c.document_name,
-            page=c.page_from,
-            section=c.section_path,
-            label=c.citation_label,
-        )
-        for i, c in enumerate(chunks, start=1)
-    ]
+    `(document_id, parent_key)` and never `parent_key` alone, for the reason
+    spelled out in `pipeline._expand`: the chunker numbers parents per document,
+    so a bare `p0` collides across documents and a child from one document
+    would take its surrounding context from another.
+    """
+    return {(c.document_id, c.parent_key): c for c in context if c.is_parent and c.parent_key}
