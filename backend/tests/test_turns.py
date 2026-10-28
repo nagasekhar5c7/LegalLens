@@ -210,6 +210,55 @@ async def test_summary_streams_a_header_then_its_fields(corpus: AsyncClient) -> 
     assert [f["index"] for f in fields] == list(range(len(fields)))
 
 
+async def test_summary_runs_with_no_focus_instructions(corpus: AsyncClient) -> None:
+    """The composer offers focus instructions as optional, so an empty `text`
+    has to reach the workflow rather than being rejected as a malformed body.
+
+    Summary is template-driven and never reads the question
+    (`SummaryWorkflow.run`), so there is nothing an empty box could degrade —
+    but a `min_length=1` on `SendMessageRequest.text` made this a 422 raised
+    before the route body ran, and Summary is the one mode whose Send button is
+    live with an empty textarea.
+    """
+    events = await collect_stream(
+        corpus,
+        "/api/summarize",
+        {
+            "text": "",
+            "mode": "summary",
+            "scope": {"kind": "document", "documentIds": ["doc_msa"]},
+        },
+    )
+    order = types_of(events)
+    assert "summary_start" in order, "an empty question must still produce a summary"
+    assert all_of(events, "summary_field"), "the template drives the fields, not the question"
+    assert order[-1] == "done"
+
+
+async def test_empty_question_is_rejected_outside_summary(corpus: AsyncClient) -> None:
+    """The flip side: an empty question is meaningless in every other mode, and
+    is refused with a next action rather than retrieved on."""
+    for mode, path in (("ask", "/api/ask"), ("auto", "/api/conversations/{id}/messages")):
+        if "{id}" in path:
+            conversation = (await corpus.post("/api/conversations", json={})).json()
+            path = f"/api/conversations/{conversation['id']}/messages"
+        response = await corpus.post(
+            path, json={"text": "   ", "mode": mode, "scope": WORKSPACE_SCOPE}
+        )
+        assert response.status_code == 400, f"{mode}: {response.text}"
+        body = response.json()
+        assert "question is required" in body["message"].lower()
+        assert body["action"], "FR-28: every error names a next action"
+
+
+async def test_a_missing_text_field_is_still_a_validation_error(corpus: AsyncClient) -> None:
+    """Empty is allowed; *absent* is a client that forgot a field, and stays a
+    422 naming it. The two must not collapse into one another."""
+    response = await corpus.post("/api/ask", json={"mode": "ask", "scope": WORKSPACE_SCOPE})
+    assert response.status_code == 422
+    assert "text" in response.json()["message"]
+
+
 async def test_summary_template_differs_by_document_type(corpus: AsyncClient) -> None:
     """BRD §9: a contract summary and an opinion summary share no structure."""
     labels: dict[str, list[str]] = {}

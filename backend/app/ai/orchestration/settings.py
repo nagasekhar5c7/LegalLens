@@ -177,6 +177,54 @@ class RouterSettings(BaseSettings):
     #: longer template added later cannot quietly double the bill.
     summary_max_fields: int = 16
 
+    #: The relevance floor for *per-field* retrieval, overriding
+    #: `relevance_floor` for summaries only.
+    #:
+    #: Zero, because the cross-encoder cannot score a template field the way
+    #: `relevance_floor` assumes. Measured against an indexed passage from a
+    #: 4-page statute article: a specific factual question ("Are bicycles
+    #: treated as vehicles in North Carolina?") scores **0.9992**, while every
+    #: whole-document query scores near zero — the template's own
+    #: "title, subject, purpose of this document" scores **0.0006**, and
+    #: rewriting it as the plain question "What is this document about?" scores
+    #: the same 0.0006. The model answers "does this passage answer this
+    #: question", and a field like `parties` or `dates` is not a question any
+    #: single passage answers. So the scores are bimodal and a 0.25 admission
+    #: test rejects every field of every document, which is what it did.
+    #:
+    #: Ask keeps the floor: there, "is any of this close enough?" is the real
+    #: question and a refusal is the right answer. Here the user has already
+    #: named the document, so what is wanted is the *best* passages for each
+    #: field — `rerank_k` and the ordering do that job. A summary with nothing
+    #: indexed still refuses, via the `candidate_count == 0` path.
+    summary_relevance_floor: float = 0.0
+
+    #: How many field retrievals may run at once.
+    #:
+    #: Bounded rather than "all of them": `summary_max_fields` allows 16, and
+    #: 16 concurrent bge-m3 + cross-encoder forward passes is a working set a
+    #: laptop does not have. The weights are shared — one instance, per
+    #: `factory.py` — but activations are not, and the machine this was
+    #: written on was already paging with a single copy resident.
+    #:
+    #: Four, because the templates are 4-9 fields: it collapses the common
+    #: case to one or two waves without letting a longer template added later
+    #: fan out unboundedly. Set to 1 to get the old sequential behaviour back
+    #: if a deployment turns out to be memory-bound.
+    summary_retrieval_concurrency: int = 4
+
+    #: Load the retrieval models at startup instead of on the first turn.
+    #:
+    #: On by default: the first turn of a cold process otherwise pays the
+    #: whole model load, measured at ~50s on the development machine, and a
+    #: turn that looks hung is worse than a process that is briefly not ready.
+    #:
+    #: Turn it off for `uvicorn --reload`. Reload restarts the process on
+    #: every file save, so each save would otherwise kick off another load of
+    #: 4.4 GB of weights — which on a laptop already paging is the difference
+    #: between an edit loop and a nap. `LL_AI_WARM_MODELS_ON_STARTUP=false`.
+    warm_models_on_startup: bool = True
+
     # --- generation: draft -----------------------------------------------
     draft_model: str = "claude-sonnet-5"
     #: Per *section*. A Discussion is the long one.

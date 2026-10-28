@@ -1243,7 +1243,6 @@
           },
           "text": {
             "maxLength": 8000,
-            "minLength": 1,
             "title": "Text",
             "type": "string"
           }
@@ -1531,7 +1530,7 @@
       },
       "SendMessageRequest": {
         "additionalProperties": false,
-        "description": "Body of POST /api/conversations/{id}/messages. `conversation_id` is in\nthe path; types.ts carries it in the object too, so it is accepted and\nignored rather than rejected by `extra='forbid'`.",
+        "description": "Body of POST /api/conversations/{id}/messages. `conversation_id` is in\nthe path; types.ts carries it in the object too, so it is accepted and\nignored rather than rejected by `extra='forbid'`.\n\n`text` is required but may be **empty**, and the distinction is load-bearing.\nSummary is template-driven and ignores the question entirely\n(`SummaryWorkflow.run` takes `question: str = \"\"` and never reads it), so\nfocus instructions are optional — which is what the composer's \"(optional)\"\nplaceholder already promises the attorney. A `min_length=1` here made every\nsummary sent with an empty box a 422 raised before the route body ran.\n\nNo default, though: a body that omits `text` altogether is a client that\nforgot a field rather than an attorney who typed nothing, and it stays a\n422 naming the field.\n\nAn empty question *is* meaningless in every other mode, so it is still\nrejected — in `turns._stream_turn`, beside the FR-19 draft guard, because\nonly the route knows the resolved intent: `POST /api/summarize` carries\nwhatever `mode` the caller sent and the route is what makes it a summary.",
         "properties": {
           "conversationId": {
             "anyOf": [
@@ -1570,7 +1569,6 @@
           },
           "text": {
             "maxLength": 8000,
-            "minLength": 1,
             "title": "Text",
             "type": "string"
           }

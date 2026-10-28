@@ -1,0 +1,48 @@
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Liveness for the container itself; does not depend on the backend.
+    location = /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Same-origin API. Host must survive the hop: the backend's CORS list and
+    # session cookie key off the browser's host (mirrors vite.config.ts).
+    location ~ ^/(api|healthz|readyz) {
+        proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        # SSE: stream tokens as they arrive, and do not cut an idle stream.
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+
+        # Document uploads.
+        client_max_body_size 50m;
+    }
+
+    # Hashed build assets never change under the same name.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # SPA fallback for BrowserRouter routes; index.html itself is never cached
+    # so a new deploy is picked up on the next load.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

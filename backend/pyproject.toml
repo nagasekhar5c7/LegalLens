@@ -36,6 +36,9 @@ ai = [
     # it is deliberately outside the base dependencies: the backend must stay
     # installable and startable without a model stack.
     "FlagEmbedding>=1.4.2",
+    # Direct only so the CPU index below applies — uv sources ignore
+    # transitive dependencies.
+    "torch",
 ]
 # Retrieval: embeddings and the vector store. Also the ingestion write path —
 # `app/indexing.py` embeds with bge-m3 and upserts into Qdrant, so a checkout
@@ -49,6 +52,7 @@ ai = [
 retrieval = [
     "qdrant-client>=1.12",
     "FlagEmbedding>=1.3",
+    "torch",
 ]
 
 # OCR for scanned PDFs. `pypdfium2` rasterises (Apache-2.0/BSD, no system
@@ -88,6 +92,16 @@ dev = [
     "pypdfium2>=4.30",
     "pillow>=11.0",
 ]
+
+# CPU-only torch on Linux. The PyPI wheel pulls ~4 GB of CUDA libraries that
+# the Docker image (no GPU) never uses. macOS keeps the PyPI wheel (MPS).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.ruff]
 line-length = 100

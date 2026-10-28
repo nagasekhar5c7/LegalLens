@@ -194,6 +194,19 @@ async def _stream_turn(
                 headers={"X-LegalLens-Replay": "true"},
             )
 
+    # An empty question is meaningless in every mode but Summary, which is
+    # template-driven and never reads `text` (`SummaryWorkflow.run`) — the
+    # composer offers focus instructions as optional and must stay able to send
+    # none. Checked here rather than on the schema because the intent is only
+    # settled once `forced_intent` is known: /api/summarize carries whatever
+    # `mode` the caller sent, and this route is what makes it a summary.
+    intent_for_text = forced_intent or body.mode
+    if intent_for_text != "summary" and not body.text.strip():
+        raise errors.bad_request(
+            "A question is required.",
+            "Type what you would like to know about the documents in scope.",
+        )
+
     # FR-19: a draft with no sources cannot be grounded, so refuse the request
     # rather than produce an ungrounded draft.
     if forced_intent == "draft" or body.mode == "draft":

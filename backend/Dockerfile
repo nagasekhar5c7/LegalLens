@@ -10,14 +10,16 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 # Dependency layer first, so a source change does not re-resolve the lockfile.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project --no-dev
+# The AI layer is an extra; without it the orchestrated engine cannot import.
+RUN uv sync --frozen --no-install-project --no-dev --extra ai
 
 
 FROM python:3.12-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    HF_HOME=/app/data/hf-cache
 
 # Non-root: the process writes only to its data directory.
 RUN useradd --create-home --uid 10001 legallens
@@ -40,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200 else 1)"
 
 # Migrations run at start so a fresh volume comes up usable.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.start:app --host 0.0.0.0 --port 8000"]

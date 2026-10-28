@@ -24,6 +24,7 @@ import logging
 import threading
 from typing import Any
 
+from app.ai.orchestration.retrieval.inference import INFERENCE_LOCK
 from app.ai.orchestration.retrieval.ports import Embedding, SparseVector
 
 log = logging.getLogger("legallens.ai.embed")
@@ -110,21 +111,26 @@ class Bgem3Embedder:
     def embed_documents(self, texts: list[str]) -> list[Embedding]:
         if not texts:
             return []
-        raw = self._load().encode(
-            texts,
-            max_length=MAX_PASSAGE_TOKENS,
-            return_dense=True,
-            return_sparse=True,
-        )
+        # INFERENCE_LOCK: this runs on an `asyncio.to_thread` worker, and the
+        # ingestion indexer calls it on the same shared model a turn reranks
+        # against. Concurrent forward passes segfault — see `inference.py`.
+        with INFERENCE_LOCK:
+            raw = self._load().encode(
+                texts,
+                max_length=MAX_PASSAGE_TOKENS,
+                return_dense=True,
+                return_sparse=True,
+            )
         return _to_embeddings(raw, len(texts))
 
     def embed_query(self, text: str) -> Embedding:
-        raw = self._load().encode(
-            [text],
-            max_length=MAX_QUERY_TOKENS,
-            return_dense=True,
-            return_sparse=True,
-        )
+        with INFERENCE_LOCK:
+            raw = self._load().encode(
+                [text],
+                max_length=MAX_QUERY_TOKENS,
+                return_dense=True,
+                return_sparse=True,
+            )
         return _to_embeddings(raw, 1)[0]
 
 

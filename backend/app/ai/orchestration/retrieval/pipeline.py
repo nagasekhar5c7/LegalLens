@@ -101,7 +101,23 @@ class Retriever:
         self.relevance_floor = relevance_floor
         self.context_token_budget = context_token_budget
 
-    def retrieve(self, query: str, *, document_ids: list[str]) -> RetrievalResult:
+    def retrieve(
+        self,
+        query: str,
+        *,
+        document_ids: list[str],
+        relevance_floor: float | None = None,
+    ) -> RetrievalResult:
+        """One query against the scoped index.
+
+        `relevance_floor` overrides the instance default for this call only.
+        It exists because the floor answers a question only Ask is actually
+        asking: "can the corpus support an answer at all?". Summary has already
+        been pointed at one document by the user, so for it the cross-encoder
+        score is a *ranking* signal, not an admission test — see
+        `summary_relevance_floor` in `settings.py`.
+        """
+        floor = self.relevance_floor if relevance_floor is None else relevance_floor
         timings: dict[str, float] = {}
 
         # FR-7: an empty scope means nothing is retrievable. `QdrantStore`
@@ -127,8 +143,8 @@ class Retriever:
         timings["rerank_ms"] = (time.perf_counter() - t) * 1000
 
         best = max((h.relevance for h in reranked), default=None)
-        kept = [h for h in reranked if h.relevance >= self.relevance_floor]
-        rejected = [h for h in reranked if h.relevance < self.relevance_floor]
+        kept = [h for h in reranked if h.relevance >= floor]
+        rejected = [h for h in reranked if h.relevance < floor]
         if not kept:
             # FR-14: a structured refusal naming what was searched, not an
             # answer assembled from weakly-related text. `best_relevance` and

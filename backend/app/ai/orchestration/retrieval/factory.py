@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from app.ai.orchestration.retrieval.pipeline import Retriever
@@ -117,6 +118,37 @@ def build_retriever(settings: RouterSettings | None = None) -> Retriever:
         relevance_floor=cfg.relevance_floor,
         context_token_budget=cfg.context_token_budget,
     )
+
+
+def warm_models(settings: RouterSettings | None = None) -> None:
+    """Load both models and run one inference through each.
+
+    Blocking and slow by design — call it off the event loop. Constructing
+    either model is cheap; the weights load on the first *inference*, so the
+    cost lands on whichever turn happens to be first unless something pays it
+    up front. Measured cold-start, from the classes' own docstrings: ~17s for
+    bge-m3 and ~5.5s for the reranker, against ~70ms and ~39ms warm.
+
+    `warm` is deliberately not on the `Embedder`/`Reranker` protocols. Those
+    describe the read contract, and the test doubles that implement them have
+    no weights to load; making warming part of the protocol would force a
+    no-op on every fake to satisfy a concern none of them have. Hence the
+    `getattr`: a model that can be warmed is, and one that cannot is skipped.
+    """
+    cfg = settings or get_router_settings()
+    for label, build in (("embedder", get_embedder), ("reranker", get_reranker)):
+        try:
+            model: Any = build(cfg)
+            warm = getattr(model, "warm", None)
+            if warm is None:
+                continue
+            t = time.perf_counter()
+            warm()
+            log.info("warmed %s in %.1fs", label, time.perf_counter() - t)
+        except Exception:  # noqa: BLE001 — warming is an optimisation, never a reason not to start
+            log.warning(
+                "could not warm the %s; the first turn will pay for it", label, exc_info=True
+            )
 
 
 def reset() -> None:

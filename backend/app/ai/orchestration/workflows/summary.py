@@ -280,8 +280,32 @@ class SummaryWorkflow:
         per_field: list[tuple[TemplateField, list[int], RetrievalResult | None]] = []
         budget = self._budget(len(fields))
 
-        for template_field in fields[:budget]:
-            retrieval = await self._retrieve(template_field, document_id)
+        # Concurrently, not in sequence. `_retrieve` already hands the work to
+        # a thread and torch releases the GIL inside the forward pass, so the
+        # `await`-one-at-a-time loop this replaces was paying N times the
+        # latency for no isolation it needed: the queries are independent and
+        # the retriever's state is read-only.
+        #
+        # Bounded by `summary_retrieval_concurrency`, because the fan-out is
+        # `summary_max_fields` wide (16) and each forward pass needs its own
+        # activations even though the weights are shared.
+        #
+        # The *ledger* stays strictly sequential below. Citation numbers are
+        # product-visible — `[[7]]` means one passage across the whole card —
+        # so they are assigned by walking the results in template order, which
+        # `asyncio.gather` preserves regardless of completion order.
+        chosen = fields[:budget]
+        slots = asyncio.Semaphore(max(1, self.settings.summary_retrieval_concurrency))
+
+        async def retrieve_bounded(template_field: TemplateField) -> RetrievalResult | None:
+            async with slots:
+                return await self._retrieve(template_field, document_id)
+
+        retrievals = await asyncio.gather(
+            *(retrieve_bounded(template_field) for template_field in chosen)
+        )
+
+        for template_field, retrieval in zip(chosen, retrievals, strict=True):
             result.queries.append(template_field.query)
             if retrieval is None:
                 per_field.append((template_field, [], None))
@@ -446,7 +470,10 @@ class SummaryWorkflow:
         """
         try:
             return await asyncio.to_thread(
-                self.retriever.retrieve, template_field.query, document_ids=[document_id]
+                self.retriever.retrieve,
+                template_field.query,
+                document_ids=[document_id],
+                relevance_floor=self.settings.summary_relevance_floor,
             )
         except Exception:  # noqa: BLE001 — one field's retrieval must not lose the rest
             log.exception("retrieval failed for field %s", template_field.key)
@@ -618,7 +645,7 @@ class SummaryWorkflow:
             message=message,
             looked_for=[],
             best_relevance=best,
-            threshold=self.retriever.relevance_floor,
+            threshold=self.settings.summary_relevance_floor,
             suggestions=[
                 RefusalSuggestion(
                     kind="rephrase",

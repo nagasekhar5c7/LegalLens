@@ -5,7 +5,6 @@
 # LL_SECRET_KEY. Never commit. The committed template is .env.example.
 .env
 .env.*
-!.env.example
 
 # Local database. Globbed so editor/Finder duplicates such as
 # "legallens 2.db-wal" are ignored too.
@@ -26,3 +25,6 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# CI HTML reports (pytest-html, coverage)
+reports/

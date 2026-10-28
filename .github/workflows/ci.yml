@@ -1,0 +1,139 @@
+# CI: every pull request into main, and main itself after a merge.
+# Nothing here pushes an image or needs a secret; that is the CD pipeline's job.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same PR supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend · lint, types, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # The suite runs offline against fakes; an empty key keeps it that way.
+      ANTHROPIC_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.5"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      # Same extras the Docker image ships (ai), plus dev tooling. On Linux torch
+      # resolves to the CPU-only wheel, see [tool.uv.sources] in pyproject.toml.
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev --extra ai
+
+      - name: Ruff lint
+        run: uv run --no-sync ruff check app tests scripts --output-format=github
+
+      - name: Ruff format
+        run: uv run --no-sync ruff format --check app tests scripts
+
+      - name: Mypy (strict)
+        run: uv run --no-sync mypy app
+
+      - name: OpenAPI contract is current
+        run: uv run --no-sync python scripts/export_openapi.py --check
+
+      # pytest-html and pytest-cov are CI-only, so they ride alongside the
+      # locked environment instead of entering uv.lock.
+      - name: Unit tests
+        run: >-
+          uv run --no-sync
+          --with pytest-html==4.2.0
+          --with pytest-cov==7.1.0
+          pytest -q -p no:cacheprovider
+          --junitxml=reports/junit.xml
+          --html=reports/tests.html --self-contained-html
+          --cov=app --cov-report=html:reports/coverage --cov-report=term
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f .coverage ]; then
+            {
+              echo '### Backend coverage'
+              echo '```'
+              uv run --no-sync --with coverage coverage report --format=total \
+                | xargs -I{} echo "Total: {}%"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload HTML reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-reports
+          path: backend/reports/
+          retention-days: 14
+
+  frontend:
+    name: Frontend · lint, types, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      # `npm run build` runs `tsc --noEmit` first, so this is also the type check.
+      - name: Typecheck and build
+        run: npm run build
+
+  docker:
+    name: Docker · images build
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only; CD will tag and push to the registry.
+      - name: Build ${{ matrix.service }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          push: false
+          tags: legallens-${{ matrix.service }}:ci-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

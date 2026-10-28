@@ -1,0 +1,51 @@
+IN THE UNITED STATES COURT OF APPEALS FOR THE SEVENTH CIRCUIT
+
+THALBERG LOGISTICS CORPORATION, Plaintiff-Appellant,
+v.
+WINSLOW FREIGHT SYSTEMS, INC., Defendant-Appellee.
+
+No. 23-2847
+
+Argued 14 January 2025 — Decided 9 April 2025
+
+Appeal from the United States District Court for the Northern District of Illinois, Eastern Division. No. 21-cv-04412 — Hon. Beatriz Okonkwo, District Judge.
+
+Before HARTIGAN, Chief Judge, and MWANGI and SZABO, Circuit Judges.
+
+SZABO, Circuit Judge.
+
+PROCEDURAL POSTURE
+
+Thalberg Logistics Corporation sued Winslow Freight Systems, Inc. for breach of a five-year transportation services contract, alleging that Winslow's unilateral imposition of a fuel surcharge breached the contract's fixed-rate provision. The district court granted summary judgment to Winslow, holding that the contract's price-adjustment clause unambiguously permitted the surcharge. Thalberg appeals. We review the grant of summary judgment de novo, construing the record in the light most favorable to the non-moving party.
+
+STATEMENT OF FACTS
+
+In March 2019 the parties executed a Transportation Services Agreement under which Winslow agreed to carry Thalberg's freight between Chicago and Memphis at a rate of $2.14 per mile. Section 4(a) of the Agreement fixed that rate "for the duration of the Term." Section 4(c), captioned "Price Adjustment," provided that "Carrier may adjust the rate set forth in Section 4(a) to account for extraordinary changes in the cost of diesel fuel, provided that Carrier gives Shipper not less than sixty (60) days' written notice and provided further that any such adjustment shall not exceed the proportionate increase in the published Department of Energy national average diesel price."
+
+In June 2021, following a 41 percent rise in the Department of Energy national average diesel price, Winslow gave written notice of a fuel surcharge of $0.19 per mile, effective 1 September 2021. Thalberg paid the surcharge under protest for eleven months and then filed suit, contending that Section 4(a)'s fixed rate controlled and that Section 4(c) applied only to renewals of the Agreement.
+
+ISSUE PRESENTED
+
+Whether the Agreement's price-adjustment clause permits a mid-term fuel surcharge notwithstanding the fixed-rate provision, or whether the two provisions are irreconcilable such that the fixed rate governs.
+
+HOLDING
+
+We hold that Sections 4(a) and 4(c) are reconcilable and that Section 4(c) authorized the mid-term surcharge. The judgment of the district court is affirmed.
+
+REASONING
+
+Under Illinois law, which the parties agree governs, a contract is read as a whole, and a court must give effect to every provision rather than allowing one clause to nullify another. Thalberg's reading would render Section 4(c) superfluous: if a price adjustment were available only at renewal, the sixty-day notice requirement — pegged to a mid-term effective date rather than to a renewal date — would serve no function. We decline to adopt a construction that leaves a bargained-for clause without work to do.
+
+Nor is Section 4(a) rendered meaningless by our reading. The phrase "for the duration of the Term" establishes the default rate and forecloses adjustments for reasons other than diesel cost. Read together, the provisions fix the rate against ordinary market movement while allocating the specific risk of extraordinary fuel cost to the shipper, subject to two express limits: advance notice and proportionality to a published index.
+
+Thalberg argues in the alternative that the surcharge was disproportionate. The record does not support that contention. The Department of Energy index rose 41 percent; the surcharge represented an increase of approximately 8.9 percent over the base rate. A proportionality limit sets a ceiling, not a formula requiring the carrier to pass through the full index movement, and Winslow stayed well below the ceiling.
+
+Finally, Thalberg contends that eleven months of payment under protest preserved its claim. We need not reach the question of waiver, because the surcharge was authorized by the Agreement and no breach occurred.
+
+DISPOSITION
+
+The judgment of the district court granting summary judgment to Winslow Freight Systems, Inc. is AFFIRMED. Costs on appeal are taxed against the appellant.
+
+MWANGI, Circuit Judge, concurring.
+
+I join the court's opinion in full. I write separately only to note that the result would likely differ had Section 4(c) lacked its proportionality limit. A price-adjustment clause with no ceiling and no reference to an external index would raise a serious question whether the fixed rate in Section 4(a) retained any meaning at all, and courts should hesitate to read such clauses as conferring unbounded discretion on the party setting the price.

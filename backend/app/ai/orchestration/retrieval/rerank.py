@@ -23,6 +23,7 @@ import logging
 import threading
 from typing import Any
 
+from app.ai.orchestration.retrieval.inference import INFERENCE_LOCK
 from app.ai.orchestration.retrieval.ports import Hit
 
 log = logging.getLogger("legallens.ai.rerank")
@@ -104,7 +105,11 @@ class Bgem3Reranker:
         return scored[:top_k]
 
     def _score(self, query: str, passages: list[str]) -> list[float]:
-        raw = self._load().compute_score([(query, p) for p in passages])
+        # INFERENCE_LOCK: shared with the embedder, not just with this model —
+        # the crash this prevents was an embed racing a rerank across two
+        # `asyncio.to_thread` workers. See `inference.py`.
+        with INFERENCE_LOCK:
+            raw = self._load().compute_score([(query, p) for p in passages])
         # compute_score returns a bare float for a single pair.
         if isinstance(raw, int | float):
             return [float(raw)]

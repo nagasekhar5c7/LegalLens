@@ -345,10 +345,13 @@ async def test_nothing_retrievable_refuses_before_spending_a_token() -> None:
 
 
 async def test_everything_below_the_floor_refuses_and_reports_the_best_score() -> None:
+    # `summary_relevance_floor`, not the retriever's: Summary overrides the
+    # floor per call, so the retriever's value is not what governs here.
     workflow = _workflow(
         hits=[Hit(chunk(1, text=CAP_TEXT, parent="p1", doc=1), 0.9)],
         scores={"c1": 0.11},
         floor=0.6,
+        summary_relevance_floor=0.6,
     )
     _, outcome = await _collect(workflow)
 
@@ -357,6 +360,38 @@ async def test_everything_below_the_floor_refuses_and_reports_the_best_score() -
     assert outcome.refusal.kind == "below_threshold"
     assert outcome.refusal.best_relevance == pytest.approx(0.11)
     assert outcome.refusal.threshold == 0.6
+
+
+async def test_serialising_retrieval_changes_nothing_but_the_order_of_work() -> None:
+    """`summary_retrieval_concurrency=1` is the escape hatch for a memory-bound
+    deployment, so it has to be a pure scheduling change — same fields, same
+    citation numbers, same coverage as the concurrent default."""
+    _, concurrent = await _collect(_workflow())
+    _, serial = await _collect(_workflow(summary_retrieval_concurrency=1))
+
+    assert [f.key for f in serial.fields] == [f.key for f in concurrent.fields]
+    assert [c.n for c in serial.citations] == [c.n for c in concurrent.citations]
+    assert serial.refused is concurrent.refused is False
+
+
+async def test_a_weak_match_is_summarised_rather_than_refused_by_default() -> None:
+    """Regression: the shipped default must not gate fields on the floor.
+
+    The cross-encoder scores a template field ("parties", "dates") near zero
+    even on a document that plainly contains them — it is trained to score
+    "does this passage answer this question", and a field is not a question.
+    Inheriting Ask's 0.25 admission test therefore refused every summary of
+    every document. Summary ranks; it does not gate.
+    """
+    workflow = _workflow(
+        hits=[Hit(chunk(1, text=CAP_TEXT, parent="p1", doc=1), 0.9)],
+        scores={"c1": 0.013},
+        floor=0.25,
+    )
+    _, outcome = await _collect(workflow)
+
+    assert outcome.refused is False
+    assert outcome.fields, "a weakly-scored passage must still be summarised from"
 
 
 # ----------------------------------------------------------------- FR-17
