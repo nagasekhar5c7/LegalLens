@@ -7,26 +7,29 @@ the requirement codes in `../docs/LegalLens-BRD-PRD-FRD.md` and the frontend lan
 
 ## Run it
 
-The backend first, in its own terminal:
+These commands work the same on macOS, Linux and Windows (PowerShell or Command Prompt).
 
-```bash
-cd ../backend
-make seed          # migrate + create the dev user and the fixture corpus
-make dev           # http://127.0.0.1:8000
+Start the backend first, in its own terminal (see `../backend/README.md`):
+
+```
+cd backend
+uv sync --extra dev --extra ai
+uv run alembic upgrade head
+uv run python -m app.seed
+uv run uvicorn app.start:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Then this:
+Then, in a second terminal:
 
-```bash
+```
+cd frontend
 npm install
-npm run dev        # http://localhost:5173 — sign in as dana@example.com
-npm run typecheck  # tsc --noEmit
-npm run lint
-npm run build      # typecheck + production build
+npm run dev
 ```
 
-`make seed` prints the dev credentials (`dana@example.com` / `counsel-demo-2026`). Or run both with
-`docker compose up --build` from the repo root.
+Open http://localhost:5173 and sign in with `dana@example.com` / `counsel-demo-2026`.
+
+Or run both with `docker compose up --build` from the repo root.
 
 ### How it reaches the API
 

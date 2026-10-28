@@ -18,40 +18,30 @@ property the port existed to buy.
 
 ## Run it
 
-```bash
+These commands work the same on macOS, Linux and Windows (PowerShell or
+Command Prompt). You need [uv](https://docs.astral.sh/uv/) installed.
+
+```
 cd backend
-make install        # uv sync --extra dev
-make seed           # migrate + create the dev user and fixture corpus
-make dev            # http://127.0.0.1:8000  (docs at /docs)
+uv sync --extra dev --extra ai
+uv run alembic upgrade head
+uv run python -m app.seed
+uv run uvicorn app.start:app --reload --host 127.0.0.1 --port 8000
 ```
 
-`make seed` prints the dev credentials (`dana@example.com` /
-`counsel-demo-2026`) and two curl commands. The whole thing:
-
-```bash
-# sign in
-curl -c /tmp/ll -X POST localhost:8000/api/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"email":"dana@example.com","password":"counsel-demo-2026"}'
-
-# stream a cited answer
-curl -b /tmp/ll -N -X POST localhost:8000/api/ask \
-  -H 'content-type: application/json' \
-  -d '{"text":"What happens on a change of control?","mode":"ask",
-       "scope":{"kind":"workspace","documentIds":[]}}'
-```
+Open http://127.0.0.1:8000/docs and sign in with `dana@example.com` /
+`counsel-demo-2026`.
 
 With the frontend too: `docker compose up --build` from the repo root, then open
-`localhost:5173`.
+http://localhost:5173.
 
 ### Everything else
 
-```bash
-make check       # lint + mypy --strict + openapi freshness + 155 tests
-make test        # pytest
-make reset       # destroy the database and blobs, re-seed
-make openapi     # regenerate openapi.json
-make help        # the full list
+```
+uv run pytest
+uv run ruff check app tests scripts
+uv run mypy app
+uv run python scripts/export_openapi.py
 ```
 
 ---
@@ -170,14 +160,14 @@ ORM object.
 "Behind an extra" means the code is real and tested but its dependencies are
 optional, because `uv sync` with no extras must still produce a backend that
 starts. What a given install will actually do is reported by
-`make ingest-check` and on `GET /readyz`, and recorded per page in
+`scripts/try_ingest.py --check` and on `GET /readyz`, and recorded per page in
 `document_pages.parse_engine` — a silent fallback is how a demo works on one
 machine and indexes nothing on another.
 
-    make install-all            # dev + ai + retrieval + ocr  (~2.5 GB of wheels)
-    brew install tesseract      # the OCR binary; pip cannot provide it
-    make ingest-check           # which engines resolved, and why not the others
-    make ingest f=nda.pdf q="what is the notice period?"
+    uv sync --extra dev --extra ai --extra retrieval --extra ocr
+    uv run python scripts/try_ingest.py --check
+
+OCR also needs the Tesseract program installed separately (pip cannot provide it).
 
 Each stub sits behind a port in [`app/ingestion/ports.py`](app/ingestion/ports.py)
 or [`app/ai/ports.py`](app/ai/ports.py). The stubs never invent content: a PDF
@@ -275,8 +265,8 @@ none of it can erode quietly.
 
 ## Endpoints
 
-33 operations across 26 paths. `openapi.json` is committed and `make check`
-fails if it is stale.
+33 operations across 26 paths. `openapi.json` is committed; regenerate it with
+`uv run python scripts/export_openapi.py`.
 
 | | |
 |---|---|
@@ -331,8 +321,8 @@ backend and FR-28 / NFR-6 stay reachable from the UI. Ignored outright when
 
 ## Testing
 
-```bash
-make test                       # 155 tests, ~36s
+```
+uv run pytest
 uv run pytest tests/test_hard_delete.py -v
 ```
 
