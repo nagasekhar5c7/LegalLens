@@ -20,3 +20,6 @@ How to check that it works: a health endpoint curl, the OpenAPI docs URL, and on
 How to view logs, open a shell inside the container, and stop or clean up.
 Actually try it. If Docker is available, run the build and fix any errors until the image builds cleanly. Report the final image size and anything you could not verify.
 Keep it AKS-friendly without building the AKS parts yet: the image should be stateless, log to stdout, shut down cleanly on SIGTERM, and work on linux/amd64 (I'm on Apple Silicon, so show the --platform flag).
+
+
+now that we have built a Docker image for the backend, I want to create just a plain Docker image or Dockerfile for the frontend. Create it and let me know if you have any questions as such.
