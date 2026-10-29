@@ -1,7 +1,12 @@
 # CI: every pull request into main, and main itself after a merge.
 # Nothing here pushes an image or needs a secret; that is the CD pipeline's job.
+#
+# Job graph:  backend ─┐
+#                      ├─> docker (builds both images)
+#             frontend ┘
 name: CI
 
+# Triggers: PRs targeting main, pushes to main, and manual runs from the Actions tab.
 on:
   pull_request:
     branches: [main]
@@ -14,10 +19,13 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Least privilege: the workflow only needs to read the repo.
 permissions:
   contents: read
 
 jobs:
+  # Python API: install the locked env with uv, then lint, format check, strict
+  # type check, OpenAPI drift check, and unit tests with coverage + HTML reports.
   backend:
     name: Backend · lint, types, tests
     runs-on: ubuntu-latest
@@ -88,6 +96,7 @@ jobs:
           path: backend/reports/
           retention-days: 14
 
+  # Web app: clean npm install, ESLint, then a production build that also type checks.
   frontend:
     name: Frontend · lint, types, build
     runs-on: ubuntu-latest
@@ -114,6 +123,8 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
+  # Runs only after both code jobs pass. Builds each service's Dockerfile in
+  # parallel (matrix) to prove the images still build; nothing is pushed.
   docker:
     name: Docker · images build
     needs: [backend, frontend]
