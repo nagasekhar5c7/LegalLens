@@ -1,0 +1,48 @@
+# Frontend and backend together. `docker compose up --build`, then open :5173.
+#
+# The backend's data volume holds the SQLite database and the encrypted blob
+# store. LL_BLOB_KEY must be stable across restarts — losing it means losing
+# every stored document, so it is read from the environment rather than
+# generated.
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      LL_ENV: ${LL_ENV:-dev}
+      LL_CORS_ORIGINS: '["http://localhost:5173"]'
+      LL_DATABASE_URL: sqlite+aiosqlite:////app/data/legallens.db
+      LL_DATA_DIR: /app/data
+      # Generate: python -c "import secrets; print(secrets.token_hex(32))"
+      LL_BLOB_KEY: ${LL_BLOB_KEY:-}
+      LL_SECRET_KEY: ${LL_SECRET_KEY:-}
+      LL_COOKIE_SECURE: ${LL_COOKIE_SECURE:-false}
+    ports:
+      - "8000:8000"
+    volumes:
+      - legallens-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  legallens-data:
+  frontend-modules:

@@ -1,0 +1,63 @@
+/* Global layer: only what cannot live in a component.
+   Everything visual belongs to tokens (theme.css) or utilities in components. */
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NFR-13: focus is always visible and always identical. */
+  :focus-visible { outline: 2px solid var(--color-navy-600); outline-offset: 2px; border-radius: 3px; }
+  :focus:not(:focus-visible) { outline: none; }
+
+  button, input, textarea, select { font: inherit; color: inherit; }
+  ::selection { background: var(--color-navy-100); }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-3); }
+}
+
+/* Keyframes are shared across components, so they are defined once here. */
+@keyframes ll-caret { to { visibility: hidden; } }
+@keyframes ll-pulse {
+  0%, 100% { background-color: var(--color-highlight); }
+  22% { background-color: var(--color-highlight-strong); box-shadow: 0 0 0 4px var(--color-highlight-strong); }
+}
+@keyframes ll-rise { from { opacity: 0; transform: translateY(4px); } }
+@keyframes ll-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes ll-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Printing a draft or a summary: paper gets the work product, not the app. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
+}

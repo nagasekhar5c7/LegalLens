@@ -1,0 +1,149 @@
+# ─── Secrets ──────────────────────────────────────────────────────────────
+# Real config never gets committed; the *.example templates do.
+.env
+.env.*
+*.env
+!.env.example
+!.env.template
+!.env.sample
+
+# Dev encryption keys (LL_BLOB_KEY / LL_SECRET_KEY material). Losing or
+# leaking these means every stored document is readable or undecryptable.
+.dev-secrets.json
+secrets.json
+*.secret
+
+# Credentials, keys and certificates
+*.pem
+*.key
+*.cer
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+*credentials*.json
+service-account*.json
+.netrc
+.npmrc
+.pypirc
+gha-creds-*.json
+
+# Cloud / tooling local state
+.aws/
+.gcloud/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# ─── Local data stores ────────────────────────────────────────────────────
+# Uploaded documents, extracted text and the vector index are user content,
+# not source. Globbed rather than named so editor-made copies
+# ("legallens 2.db-wal") are caught too.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+data/
+uploads/
+blobs/
+
+# ─── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+.installed.cfg
+
+# Test / type / lint caches
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+.ipynb_checkpoints/
+
+# ─── Node / frontend ──────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+.next/
+.cache/
+*.local
+.eslintcache
+.npm/
+.yarn/*
+!.yarn/releases
+!.yarn/patches
+.pnp.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.turbo/
+
+# Playwright / test artifacts
+playwright-report/
+test-results/
+blob-report/
+coverage/
+
+# ─── Logs & runtime ───────────────────────────────────────────────────────
+*.log
+logs/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ─── OS & editor ──────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ─── Scratch ──────────────────────────────────────────────────────────────
+tmp/
+temp/
+scratch/
+*.bak
+*.orig
+*.rej

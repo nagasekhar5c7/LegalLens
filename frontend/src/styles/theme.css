@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+   Legal Lens — "Counsel" design tokens
+   Light, warm, professional. Colour carries meaning, never decoration.
+   Authored so a dark theme is a single override block (see bottom) — light is
+   the only theme shipped in Phase 1.
+   ========================================================================= */
+
+@theme {
+  /* ---- surfaces -------------------------------------------------------- */
+  --color-canvas: #faf9f7; /* warm paper, app background */
+  --color-raised: #ffffff; /* cards, panels, menus */
+  --color-sunken: #f4f2ef; /* excerpts, code, inset wells */
+  --color-hover: #f2efeb; /* row / control hover */
+  --color-active: #eae6e0; /* pressed, selected row */
+  --color-scrim: color-mix(in oklab, #1c1b19 42%, transparent);
+
+  /* ---- hairlines ------------------------------------------------------- */
+  --color-line: #e7e3dd;
+  --color-line-strong: #d5cfc7;
+
+  /* ---- ink ------------------------------------------------------------- */
+  --color-ink: #1c1b19;
+  --color-ink-2: #5a574f; /* secondary copy — 7.0:1 on canvas */
+  --color-ink-3: #857f74; /* tertiary / meta — 4.6:1 on canvas */
+  --color-ink-inverse: #fbfaf8;
+
+  /* ---- primary: counsel navy ------------------------------------------ */
+  --color-navy-50: #eef3fa;
+  --color-navy-100: #dde8f4;
+  --color-navy-200: #bed2e9;
+  --color-navy-300: #8fb0d6;
+  --color-navy-500: #3a6aa8;
+  --color-navy-600: #2b5080; /* primary */
+  --color-navy-700: #1f3a5f; /* primary pressed */
+  --color-navy-900: #142741;
+
+  /* ---- semantic: grounded / verified (sage) --------------------------- */
+  --color-grounded: #2f6b4f;
+  --color-grounded-bg: #edf5f0;
+  --color-grounded-line: #c3dfd0;
+
+  /* ---- semantic: refusal (neutral slate — deliberately NOT alarming) -- */
+  --color-refusal: #55606b;
+  --color-refusal-bg: #f1f3f5;
+  --color-refusal-line: #d9dee3;
+
+  /* ---- semantic: unreviewed draft (amber) ----------------------------- */
+  --color-draft: #8a5a12;
+  --color-draft-bg: #fdf6e7;
+  --color-draft-line: #ebd9ac;
+
+  /* ---- semantic: error (muted brick) ---------------------------------- */
+  --color-danger: #9b2c2c;
+  --color-danger-bg: #fdf2f2;
+  --color-danger-line: #f0cfcf;
+
+  /* ---- semantic: OCR / caution (ochre) -------------------------------- */
+  --color-caution: #8a6a12;
+  --color-caution-bg: #fbf5e4;
+  --color-caution-line: #e8dcb4;
+
+  /* ---- citation highlight --------------------------------------------- */
+  --color-highlight: #fdf0c8;
+  --color-highlight-strong: #f9df95;
+
+  /* ---- type ------------------------------------------------------------ */
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4 Variable', 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-2xs: 0.6875rem; /* 11px — trace, span ids */
+  --text-2xs--line-height: 1rem;
+
+  /* ---- radii ----------------------------------------------------------- */
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-panel: 10px;
+
+  /* ---- elevation: two-layer, barely there ----------------------------- */
+  --shadow-sm: 0 1px 2px rgb(28 27 25 / 0.04), 0 1px 1px rgb(28 27 25 / 0.03);
+  --shadow-md:
+    0 2px 4px rgb(28 27 25 / 0.05), 0 4px 12px rgb(28 27 25 / 0.06);
+  --shadow-panel:
+    0 1px 2px rgb(28 27 25 / 0.04), 0 8px 32px rgb(28 27 25 / 0.1);
+
+  /* ---- motion: nothing over 180ms ------------------------------------- */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Layout rails — not Tailwind tokens, read by the shell grid. */
+:root {
+  --rail-sidebar: 272px;
+  --rail-evidence: 400px;
+  --bar-top: 48px;
+}

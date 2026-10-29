@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 308 >>
+stream
+BT /F1 11 Tf 56 720 Td 15 TL
+(MUTUAL NON-DISCLOSURE AGREEMENT) Tj T*
+(1.1  This Agreement is entered into as of 12 June 2025 by and between) Tj T*
+(Westcliff Analytics, Inc., a Delaware corporation \("Discloser"\), and) Tj T*
+(Pennington Labs LLC, an Ohio limited liability company \("Recipient"\).) Tj T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 351 >>
+stream
+BT /F1 11 Tf 56 720 Td 15 TL
+(3.1  The obligations of confidentiality shall continue for a period of) Tj T*
+(seven \(7\) years from the date of disclosure, except with respect to any) Tj T*
+(trade secret, as to which the obligations shall continue indefinitely.) Tj T*
+(4.1  This Agreement shall be governed by the laws of the State of Ohio.) Tj T*
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000317 00000 n 
+0000000676 00000 n 
+0000000802 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1204
+%%EOF

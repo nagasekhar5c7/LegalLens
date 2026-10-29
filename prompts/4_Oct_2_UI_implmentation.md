@@ -1,0 +1,9 @@
+hey, assume that right now you are a senior UI developer who has some understanding of user experience (UX) as well. I want you to take this project end to end and understand what the nuanced features are that we would be needing. Start building UI for this application. As you know, I just want you to build only UI, focus on UI for now. Don't just focus on backend, orchestration, or AI layer at this moment. I just want you to only focus on primarily implementing UI. 
+
+Before you create this UI end-to-end, I want you to come up with something like a frontend to-do task to-do.md file, which says how you implement this. Whenever you are implementing this, as you know, there is no backend, so try to use mockup data for now and then implement this entire UI layer. 
+
+And because this is a chatbot, I am giving you a free hand, so you can refer to the best chatbots that are available right now in the market. You can take inspiration from all those chatbots whenever you are building the sidebar or any other detail. I'm just giving you a free hand, so I don't want something to be very dark from a UI perspective. That is the only constraint that I am putting.
+
+Have some professional, industry-grade colors or themes that you can choose, but design is up to you. You can take inspiration from OpenAI or Claude or anywhere, but make it professional, because this is a user-facing application. Even though we are not deploying this application for 1 million customers, the people who are using this application need to have that attention to detail for what you are building. Have all these considerations in mind, and then start building a to-do list for now.
+
+Once I approve the to-do list, you can start creating the skeleton folder with all those component files that are required for the frontend. You can start implementing the actual UI that is needed for this project.

@@ -1,0 +1,3601 @@
+{
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "description": "FR-28: every variant names a next action. Used as an HTTP error body and\nas the `{type:'error'}` stream event, so one frontend parser handles both.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "documentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentid"
+          },
+          "excerptsAvailable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerptsavailable"
+          },
+          "kind": {
+            "enum": [
+              "llm_unavailable",
+              "rate_limited",
+              "parse_failed",
+              "timeout",
+              "network"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "requestId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestid"
+          },
+          "retryAfterSec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryaftersec"
+          }
+        },
+        "required": [
+          "kind",
+          "message",
+          "action"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "AssistantTurn": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "disclaimer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disclaimer"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excerpts": {
+            "items": {
+              "$ref": "#/components/schemas/Excerpt"
+            },
+            "title": "Excerpts",
+            "type": "array"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intent": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ask",
+                  "summary",
+                  "draft",
+                  "out_of_scope"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent"
+          },
+          "kind": {
+            "enum": [
+              "answer",
+              "summary",
+              "draft"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Refusal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestedMode": {
+            "enum": [
+              "auto",
+              "ask",
+              "summary",
+              "draft"
+            ],
+            "title": "Requestedmode",
+            "type": "string"
+          },
+          "role": {
+            "const": "assistant",
+            "default": "assistant",
+            "title": "Role",
+            "type": "string"
+          },
+          "scopeUsed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScopeUsed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/Stage"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "streaming",
+              "complete",
+              "refused",
+              "error",
+              "incomplete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          },
+          "traceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traceid"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Usage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Versions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "kind",
+          "requestedMode",
+          "createdAt"
+        ],
+        "title": "AssistantTurn",
+        "type": "object"
+      },
+      "Body_upload_api_documents_post": {
+        "properties": {
+          "files": {
+            "description": "One or more PDF, DOCX or TXT files",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_api_documents_post",
+        "type": "object"
+      },
+      "Citation": {
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "documentName": {
+            "title": "Documentname",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "spanId": {
+            "title": "Spanid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "spanId",
+          "documentId",
+          "documentName",
+          "page",
+          "label"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
+      "Conversation": {
+        "properties": {
+          "dominantKind": {
+            "enum": [
+              "answer",
+              "summary",
+              "draft"
+            ],
+            "title": "Dominantkind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lastMessageAt": {
+            "title": "Lastmessageat",
+            "type": "string"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turnCount": {
+            "title": "Turncount",
+            "type": "integer"
+          },
+          "turns": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "assistant": "#/components/schemas/AssistantTurn",
+                  "user": "#/components/schemas/UserTurn"
+                },
+                "propertyName": "role"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/UserTurn"
+                },
+                {
+                  "$ref": "#/components/schemas/AssistantTurn"
+                }
+              ]
+            },
+            "title": "Turns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "lastMessageAt",
+          "pinned",
+          "dominantKind",
+          "turnCount"
+        ],
+        "title": "Conversation",
+        "type": "object"
+      },
+      "ConversationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "default": "New chat",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ConversationCreate",
+        "type": "object"
+      },
+      "ConversationPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "title": "ConversationPage",
+        "type": "object"
+      },
+      "ConversationPatch": {
+        "additionalProperties": false,
+        "description": "⊕ `pinned` is not in the architecture's endpoint list but client.ts\ncalls `setPinned`, so it lands here rather than as a second route.",
+        "properties": {
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ConversationPatch",
+        "type": "object"
+      },
+      "ConversationSummary": {
+        "properties": {
+          "dominantKind": {
+            "enum": [
+              "answer",
+              "summary",
+              "draft"
+            ],
+            "title": "Dominantkind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lastMessageAt": {
+            "title": "Lastmessageat",
+            "type": "string"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turnCount": {
+            "title": "Turncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "lastMessageAt",
+          "pinned",
+          "dominantKind",
+          "turnCount"
+        ],
+        "title": "ConversationSummary",
+        "type": "object"
+      },
+      "Coverage": {
+        "description": "FR-17: what a composed long-document summary actually covered.",
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "pagesCovered": {
+            "title": "Pagescovered",
+            "type": "integer"
+          },
+          "passes": {
+            "title": "Passes",
+            "type": "integer"
+          },
+          "totalPages": {
+            "title": "Totalpages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pagesCovered",
+          "totalPages",
+          "passes",
+          "note"
+        ],
+        "title": "Coverage",
+        "type": "object"
+      },
+      "DocumentFailure": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "detail"
+        ],
+        "title": "DocumentFailure",
+        "type": "object"
+      },
+      "DocumentStatus": {
+        "description": "The poll target for the upload queue.",
+        "properties": {
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ingestion": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionStep"
+            },
+            "title": "Ingestion",
+            "type": "array"
+          },
+          "ocr": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OcrInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "parsing",
+              "ocr",
+              "indexing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "pages"
+        ],
+        "title": "DocumentStatus",
+        "type": "object"
+      },
+      "DocumentTypePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "contract",
+              "opinion",
+              "pleading",
+              "other"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "DocumentTypePatch",
+        "type": "object"
+      },
+      "DraftParams": {
+        "additionalProperties": false,
+        "description": "FR-19. `document_ids` empty is a validation failure, not a default —\na draft with no sources cannot be grounded.",
+        "properties": {
+          "audience": {
+            "default": "supervising partner",
+            "title": "Audience",
+            "type": "string"
+          },
+          "documentIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Documentids",
+            "type": "array"
+          },
+          "draftType": {
+            "enum": [
+              "memo",
+              "case_brief"
+            ],
+            "title": "Drafttype",
+            "type": "string"
+          },
+          "position": {
+            "default": "",
+            "title": "Position",
+            "type": "string"
+          },
+          "questionPresented": {
+            "default": "",
+            "title": "Questionpresented",
+            "type": "string"
+          },
+          "tone": {
+            "default": "neutral predictive",
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "draftType"
+        ],
+        "title": "DraftParams",
+        "type": "object"
+      },
+      "DraftPayload": {
+        "properties": {
+          "draftType": {
+            "enum": [
+              "memo",
+              "case_brief"
+            ],
+            "title": "Drafttype",
+            "type": "string"
+          },
+          "params": {
+            "$ref": "#/components/schemas/DraftParams"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DraftSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "draftType",
+          "title",
+          "params"
+        ],
+        "title": "DraftPayload",
+        "type": "object"
+      },
+      "DraftSection": {
+        "properties": {
+          "bodyMd": {
+            "title": "Bodymd",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "heading",
+          "bodyMd"
+        ],
+        "title": "DraftSection",
+        "type": "object"
+      },
+      "Excerpt": {
+        "description": "FR-12: shown beside the answer with no further user action.",
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "documentName": {
+            "title": "Documentname",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "relevance": {
+            "title": "Relevance",
+            "type": "number"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "spanId": {
+            "title": "Spanid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spanId",
+          "documentId",
+          "documentName",
+          "page",
+          "before",
+          "text",
+          "after",
+          "relevance"
+        ],
+        "title": "Excerpt",
+        "type": "object"
+      },
+      "ExcludedDocument": {
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "name",
+          "reason"
+        ],
+        "title": "ExcludedDocument",
+        "type": "object"
+      },
+      "Feedback": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reasons": {
+            "items": {
+              "enum": [
+                "wrong_citation",
+                "missed_content",
+                "fabricated",
+                "wrong_refusal",
+                "wrong_structure",
+                "other"
+              ],
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "verdict": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "Feedback",
+        "type": "object"
+      },
+      "FeedbackRequest": {
+        "additionalProperties": false,
+        "description": "FR-25: joined to the message *and* its retrieval trace.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reasons": {
+            "items": {
+              "enum": [
+                "wrong_citation",
+                "missed_content",
+                "fabricated",
+                "wrong_refusal",
+                "wrong_structure",
+                "other"
+              ],
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "turnId": {
+            "title": "Turnid",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "turnId",
+          "verdict"
+        ],
+        "title": "FeedbackRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IngestionStep": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ms"
+          },
+          "status": {
+            "enum": [
+              "done",
+              "active",
+              "pending",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "status"
+        ],
+        "title": "IngestionStep",
+        "type": "object"
+      },
+      "LegalDocument": {
+        "properties": {
+          "classifierConfidence": {
+            "title": "Classifierconfidence",
+            "type": "number"
+          },
+          "duplicateOf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicateof"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ingestion": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IngestionStep"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingestion"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ocr": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OcrInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "sizeBytes": {
+            "title": "Sizebytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "parsing",
+              "ocr",
+              "indexing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "contract",
+              "opinion",
+              "pleading",
+              "other"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "typeSource": {
+            "enum": [
+              "detected",
+              "overridden"
+            ],
+            "title": "Typesource",
+            "type": "string"
+          },
+          "uploadedAt": {
+            "title": "Uploadedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "typeSource",
+          "classifierConfidence",
+          "pages",
+          "sizeBytes",
+          "status",
+          "uploadedAt"
+        ],
+        "title": "LegalDocument",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "LoginResponse": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "workspaceName": {
+            "title": "Workspacename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "workspaceName"
+        ],
+        "title": "LoginResponse",
+        "type": "object"
+      },
+      "Me": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "workspaceName": {
+            "title": "Workspacename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "workspaceName"
+        ],
+        "title": "Me",
+        "type": "object"
+      },
+      "ModeRequest": {
+        "additionalProperties": false,
+        "description": "Body of the explicit-mode endpoints. `conversation_id` optional: when\nabsent the endpoint creates a conversation, so /api/ask works standalone.",
+        "properties": {
+          "conversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversationid"
+          },
+          "draftParams": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftParams"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "ask",
+              "summary",
+              "draft"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "text": {
+            "maxLength": 8000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ModeRequest",
+        "type": "object"
+      },
+      "OcrInfo": {
+        "description": "DR-1. `low_confidence_pages` is 1-indexed and surfaced in the UI.",
+        "properties": {
+          "lowConfidencePages": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lowconfidencepages",
+            "type": "array"
+          },
+          "meanConfidence": {
+            "title": "Meanconfidence",
+            "type": "number"
+          },
+          "scanned": {
+            "title": "Scanned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scanned",
+          "meanConfidence"
+        ],
+        "title": "OcrInfo",
+        "type": "object"
+      },
+      "Page": {
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "ocrConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocrconfidence"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "page",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      },
+      "Refusal": {
+        "description": "FR-14 / TS-3. A first-class outcome, distinct in type from an error.",
+        "properties": {
+          "bestRelevance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bestrelevance"
+          },
+          "kind": {
+            "enum": [
+              "no_support",
+              "out_of_scope",
+              "below_threshold"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lookedFor": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lookedfor",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/RefusalSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "kind",
+          "message"
+        ],
+        "title": "Refusal",
+        "type": "object"
+      },
+      "RefusalSuggestion": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "kind": {
+            "enum": [
+              "widen_scope",
+              "upload",
+              "rephrase",
+              "switch_mode"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "label"
+        ],
+        "title": "RefusalSuggestion",
+        "type": "object"
+      },
+      "RejectedFile": {
+        "description": "Mirrors `RejectedFile` in client.ts — FR-2 wording lives server-side now.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "RejectedFile",
+        "type": "object"
+      },
+      "RetrievalCandidate": {
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "kept": {
+            "title": "Kept",
+            "type": "boolean"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "spanId": {
+            "title": "Spanid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spanId",
+          "documentId",
+          "page",
+          "score",
+          "kept"
+        ],
+        "title": "RetrievalCandidate",
+        "type": "object"
+      },
+      "Scope": {
+        "additionalProperties": false,
+        "properties": {
+          "documentIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Documentids",
+            "type": "array"
+          },
+          "kind": {
+            "default": "workspace",
+            "enum": [
+              "document",
+              "subset",
+              "workspace"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "title": "Scope",
+        "type": "object"
+      },
+      "ScopeUsed": {
+        "description": "FR-9: echoed on every response. FR-7: `excluded` names what fell out.",
+        "properties": {
+          "documentCount": {
+            "title": "Documentcount",
+            "type": "integer"
+          },
+          "documentIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Documentids",
+            "type": "array"
+          },
+          "excluded": {
+            "items": {
+              "$ref": "#/components/schemas/ExcludedDocument"
+            },
+            "title": "Excluded",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "document",
+              "subset",
+              "workspace"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "pageCount": {
+            "title": "Pagecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "documentIds",
+          "documentCount",
+          "pageCount"
+        ],
+        "title": "ScopeUsed",
+        "type": "object"
+      },
+      "SendMessageRequest": {
+        "additionalProperties": false,
+        "description": "Body of POST /api/conversations/{id}/messages. `conversation_id` is in\nthe path; types.ts carries it in the object too, so it is accepted and\nignored rather than rejected by `extra='forbid'`.\n\n`text` is required but may be **empty**, and the distinction is load-bearing.\nSummary is template-driven and ignores the question entirely\n(`SummaryWorkflow.run` takes `question: str = \"\"` and never reads it), so\nfocus instructions are optional — which is what the composer's \"(optional)\"\nplaceholder already promises the attorney. A `min_length=1` here made every\nsummary sent with an empty box a 422 raised before the route body ran.\n\nNo default, though: a body that omits `text` altogether is a client that\nforgot a field rather than an attorney who typed nothing, and it stays a\n422 naming the field.\n\nAn empty question *is* meaningless in every other mode, so it is still\nrejected — in `turns._stream_turn`, beside the FR-19 draft guard, because\nonly the route knows the resolved intent: `POST /api/summarize` carries\nwhatever `mode` the caller sent and the route is what makes it a summary.",
+        "properties": {
+          "conversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversationid"
+          },
+          "draftParams": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftParams"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "ask",
+              "summary",
+              "draft"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "text": {
+            "maxLength": 8000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SendMessageRequest",
+        "type": "object"
+      },
+      "ServerConfig": {
+        "description": "So FR-2's client-side validation reads its limits from one place.",
+        "properties": {
+          "acceptedExtensions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Acceptedextensions",
+            "type": "array"
+          },
+          "generationBudgetS": {
+            "title": "Generationbudgets",
+            "type": "integer"
+          },
+          "maxBytes": {
+            "title": "Maxbytes",
+            "type": "integer"
+          },
+          "maxDocuments": {
+            "title": "Maxdocuments",
+            "type": "integer"
+          },
+          "maxPages": {
+            "title": "Maxpages",
+            "type": "integer"
+          },
+          "scenariosEnabled": {
+            "title": "Scenariosenabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "maxBytes",
+          "maxPages",
+          "maxDocuments",
+          "acceptedExtensions",
+          "scenariosEnabled",
+          "generationBudgetS"
+        ],
+        "title": "ServerConfig",
+        "type": "object"
+      },
+      "Span": {
+        "description": "FR-11. Offsets are page-local — see BACKEND-TODO §8.2.",
+        "properties": {
+          "charEnd": {
+            "title": "Charend",
+            "type": "integer"
+          },
+          "charStart": {
+            "title": "Charstart",
+            "type": "integer"
+          },
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "page",
+          "charStart",
+          "charEnd"
+        ],
+        "title": "Span",
+        "type": "object"
+      },
+      "Stage": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "elapsedMs": {
+            "title": "Elapsedms",
+            "type": "number"
+          },
+          "key": {
+            "enum": [
+              "routing",
+              "retrieving",
+              "reranking",
+              "expanding",
+              "assembling",
+              "writing",
+              "verifying",
+              "classifying",
+              "field_retrieval",
+              "mapping",
+              "composing"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "status",
+          "elapsedMs"
+        ],
+        "title": "Stage",
+        "type": "object"
+      },
+      "SummaryField": {
+        "properties": {
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off_market",
+                  "unusual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          },
+          "flagNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagnote"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "valueMd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuemd"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SummaryField",
+        "type": "object"
+      },
+      "SummaryPayload": {
+        "properties": {
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "documentName": {
+            "title": "Documentname",
+            "type": "string"
+          },
+          "documentType": {
+            "enum": [
+              "contract",
+              "opinion",
+              "pleading",
+              "other"
+            ],
+            "title": "Documenttype",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "templateName": {
+            "title": "Templatename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "documentName",
+          "documentType",
+          "templateName"
+        ],
+        "title": "SummaryPayload",
+        "type": "object"
+      },
+      "Trace": {
+        "description": "NFR-11 / NFR-12: retrieval → assembly → generation, with the versions\nthat produced it, so any answer is reproducible.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "conversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversationid"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "messageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messageid"
+          },
+          "queries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/Stage"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "timings": {
+            "additionalProperties": true,
+            "title": "Timings",
+            "type": "object"
+          },
+          "traceId": {
+            "title": "Traceid",
+            "type": "string"
+          },
+          "versions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Versions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "traceId"
+        ],
+        "title": "Trace",
+        "type": "object"
+      },
+      "TurnPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "assistant": "#/components/schemas/AssistantTurn",
+                  "user": "#/components/schemas/UserTurn"
+                },
+                "propertyName": "role"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/UserTurn"
+                },
+                {
+                  "$ref": "#/components/schemas/AssistantTurn"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "title": "TurnPage",
+        "type": "object"
+      },
+      "UploadResult": {
+        "description": "FR-3: per-file outcomes, so one rejection never fails the batch.",
+        "properties": {
+          "accepted": {
+            "items": {
+              "$ref": "#/components/schemas/LegalDocument"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedFile"
+            },
+            "title": "Rejected",
+            "type": "array"
+          }
+        },
+        "title": "UploadResult",
+        "type": "object"
+      },
+      "Usage": {
+        "properties": {
+          "inputTokens": {
+            "title": "Inputtokens",
+            "type": "integer"
+          },
+          "latencyMs": {
+            "title": "Latencyms",
+            "type": "number"
+          },
+          "outputTokens": {
+            "title": "Outputtokens",
+            "type": "integer"
+          },
+          "timeToFirstTokenMs": {
+            "title": "Timetofirsttokenms",
+            "type": "number"
+          },
+          "usd": {
+            "title": "Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "inputTokens",
+          "outputTokens",
+          "usd",
+          "latencyMs",
+          "timeToFirstTokenMs"
+        ],
+        "title": "Usage",
+        "type": "object"
+      },
+      "UsageLedger": {
+        "description": "⊕ types.ts has the row type; the frontend's settings page also wants\ntotals, so they ride along rather than being recomputed client-side.",
+        "properties": {
+          "budgetPerAskUsd": {
+            "default": 0.05,
+            "title": "Budgetperaskusd",
+            "type": "number"
+          },
+          "meanUsdPerAsk": {
+            "default": 0.0,
+            "title": "Meanusdperask",
+            "type": "number"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/UsageLedgerRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totalAsks": {
+            "default": 0,
+            "title": "Totalasks",
+            "type": "integer"
+          },
+          "totalTokens": {
+            "default": 0,
+            "title": "Totaltokens",
+            "type": "integer"
+          },
+          "totalUsd": {
+            "default": 0.0,
+            "title": "Totalusd",
+            "type": "number"
+          }
+        },
+        "title": "UsageLedger",
+        "type": "object"
+      },
+      "UsageLedgerRow": {
+        "properties": {
+          "asks": {
+            "title": "Asks",
+            "type": "integer"
+          },
+          "conversationId": {
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "usd": {
+            "title": "Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "conversationId",
+          "title",
+          "asks",
+          "usd",
+          "tokens"
+        ],
+        "title": "UsageLedgerRow",
+        "type": "object"
+      },
+      "UserTurn": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "draftParams": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftParams"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "auto",
+              "ask",
+              "summary",
+              "draft"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "role": {
+            "const": "user",
+            "default": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "mode",
+          "scope",
+          "createdAt"
+        ],
+        "title": "UserTurn",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Versions": {
+        "description": "NFR-12: what produced this answer, so it is reproducible.",
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "prompt",
+          "index"
+        ],
+        "title": "Versions",
+        "type": "object"
+      },
+      "WorkspaceDeleteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "title": "Confirm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "title": "WorkspaceDeleteRequest",
+        "type": "object"
+      },
+      "WorkspaceHealth": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "indexing": {
+            "title": "Indexing",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documents",
+          "ready",
+          "indexing",
+          "failed",
+          "pages"
+        ],
+        "title": "WorkspaceHealth",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "\nLegal Lens — grounded reading and drafting over an attorney's own documents.\n\nEvery output is traceable to a retrieved span, or the system declines. A refusal\nis a `200` carrying a structured `refusal` object, not an error: \"not answerable\nfrom your documents\" is a first-class success state (FR-14, TS-3).\n\nThe wire is **camelCase**, matching `frontend/src/api/types.ts`.\n",
+    "title": "Legal Lens API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/ask": {
+      "post": {
+        "operationId": "ask_api_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "SSE event stream"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask",
+        "tags": [
+          "turns"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "me_api_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/blobs/{token}": {
+      "get": {
+        "operationId": "read_blob_api_blobs__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Blob",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/config": {
+      "get": {
+        "operationId": "config_api_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Config",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/conversations": {
+      "get": {
+        "operationId": "list_conversations_api_conversations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Conversations",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "post": {
+        "description": "The NCC endpoint. Returns the full `Conversation` with an empty `turns`,\nso the client can route to it without a second fetch.",
+        "operationId": "create_conversation_api_conversations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/conversations/{conversation_id}": {
+      "delete": {
+        "operationId": "delete_conversation_api_conversations__conversation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "get": {
+        "operationId": "get_conversation_api_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_conversation_api_conversations__conversation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/conversations/{conversation_id}/messages": {
+      "get": {
+        "operationId": "list_messages_api_conversations__conversation_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Messages",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "post": {
+        "operationId": "send_message_api_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "SSE event stream"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Message",
+        "tags": [
+          "turns"
+        ]
+      }
+    },
+    "/api/documents": {
+      "get": {
+        "operationId": "list_documents_api_documents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(contract|opinion|pleading|other)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "uploaded_desc",
+              "title": "Sort",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LegalDocument"
+                  },
+                  "title": "Response List Documents Api Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Documents",
+        "tags": [
+          "documents"
+        ]
+      },
+      "post": {
+        "operationId": "upload_api_documents_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_api_documents_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}": {
+      "delete": {
+        "description": "FR-26: file, extracted text, chunks and embeddings, effective\nimmediately for retrieval. TS-6: verified by `tests/test_hard_delete.py`.",
+        "operationId": "delete_document_api_documents__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "get": {
+        "operationId": "get_document_api_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_document_api_documents__document_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTypePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}/pages/{page_no}": {
+      "get": {
+        "description": "FR-4 / FR-13. The 500-page viewer hammers this, so it carries an ETag\nand a private cache window — page text does not change once ingested.",
+        "operationId": "get_page_api_documents__document_id__pages__page_no__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page_no",
+            "required": true,
+            "schema": {
+              "title": "Page No",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Page",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}/pages/{page_no}/image": {
+      "get": {
+        "description": "⊕ Page images for the citation viewer, behind a 60-second signed URL —\nnever a guessable path (architecture band 6).",
+        "operationId": "get_page_image_api_documents__document_id__pages__page_no__image_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page_no",
+            "required": true,
+            "schema": {
+              "title": "Page No",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Page Image",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}/retry": {
+      "post": {
+        "description": "⊕ FR-3's retry. Re-queues rather than mutating the failed job, so the\nprevious attempt's log survives for comparison.",
+        "operationId": "retry_document_api_documents__document_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}/status": {
+      "get": {
+        "description": "The poll target for the upload queue. Deliberately small — the library\npolls this per in-flight file, and a full document payload per tick would\nbe wasteful.",
+        "operationId": "get_status_api_documents__document_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Status",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/draft": {
+      "post": {
+        "operationId": "draft_api_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "SSE event stream"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Draft",
+        "tags": [
+          "turns"
+        ]
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "description": "FR-25: linked to the response *and* its retrieval trace. \"The answer is\nin my documents\" on a refusal is the single most valuable signal here, so\nthe trace has to come along or the report is unactionable.",
+        "operationId": "submit_feedback_api_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Feedback",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/spans/{span_id}": {
+      "get": {
+        "description": "FR-11: a citation resolves to document, page and character span.\nOffsets are page-local — see BACKEND-TODO §8.2.",
+        "operationId": "get_span_api_spans__span_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "span_id",
+            "required": true,
+            "schema": {
+              "title": "Span Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Span"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Span",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/summarize": {
+      "post": {
+        "operationId": "summarize_api_summarize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "SSE event stream"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summarize",
+        "tags": [
+          "turns"
+        ]
+      }
+    },
+    "/api/traces/{trace_id}": {
+      "get": {
+        "description": "NFR-11 / NFR-12: stage timings, the queries actually run, the candidate\nset with scores, and the versions that produced the answer.",
+        "operationId": "get_trace_api_traces__trace_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trace_id",
+            "required": true,
+            "schema": {
+              "title": "Trace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trace"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trace",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/turns/{turn_id}": {
+      "get": {
+        "description": "⊕ Re-read one turn. The frontend uses this after a reconnect to find out\nwhether a stream it lost actually completed — otherwise an interrupted\nstream and a completed-but-unseen one are indistinguishable.",
+        "operationId": "get_turn_api_turns__turn_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turn_id",
+            "required": true,
+            "schema": {
+              "title": "Turn Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Turn",
+        "tags": [
+          "turns"
+        ]
+      }
+    },
+    "/api/usage": {
+      "get": {
+        "description": "NFR-8: cost attributed per request and visible. The frontend's settings\npage shows spend against the $0.05-per-ask budget, so the totals ride along\nrather than being summed client-side over a partial page.",
+        "operationId": "get_usage_api_usage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageLedger"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/workspace": {
+      "delete": {
+        "description": "FR-26 at workspace level. Documents are hard-deleted; conversations,\ntraces and usage go with them. `audit_log` is retained — a tombstone is the\nonly record that survives, which is what DR-4 requires and what makes the\nopen question in BRD §16 about audit retention worth asking.",
+        "operationId": "delete_workspace_api_workspace_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Workspace",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/workspace/health": {
+      "get": {
+        "description": "⊕ The sidebar's `6 documents · 4 ready · 1 indexing · 1 failed` card.",
+        "operationId": "health_api_workspace_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthz Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Readyz Readyz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readyz",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

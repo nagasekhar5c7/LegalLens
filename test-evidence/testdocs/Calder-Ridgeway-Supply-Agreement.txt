@@ -1,0 +1,95 @@
+SUPPLY AND DISTRIBUTION AGREEMENT
+
+This Supply and Distribution Agreement (this "Agreement") is made as of 15 June 2025 between Calder Precision Components GmbH, a company organized under the laws of Germany with its registered office at Industriestrasse 44, Stuttgart ("Supplier"), and Ridgeway Marine Systems Ltd., a company incorporated in England and Wales with its registered office at 8 Dockside Way, Southampton ("Distributor").
+
+1. APPOINTMENT AND SCOPE
+
+1.1 Appointment. Supplier appoints Distributor as its exclusive distributor of the Products in the Territory for the Term, and Distributor accepts that appointment.
+
+1.2 Products. "Products" means the marine propulsion control units, sensor assemblies and spare parts listed in Schedule 1, as amended by Supplier from time to time on not less than sixty (60) days' written notice.
+
+1.3 Territory. "Territory" means the United Kingdom, the Republic of Ireland, Norway and Denmark. Distributor shall not solicit orders or appoint sub-distributors outside the Territory without Supplier's prior written consent.
+
+2. TERM
+
+2.1 Term. This Agreement commences on 1 July 2025 and continues for five (5) years (the "Term"), unless terminated earlier in accordance with Section 9.
+
+2.2 Extension. The Term may be extended by mutual written agreement signed by an authorized representative of each party not later than six (6) months before expiry.
+
+3. MINIMUM PURCHASE OBLIGATIONS
+
+3.1 Annual Minimums. Distributor shall purchase Products with an aggregate invoice value of not less than four million euros (EUR 4,000,000) in each contract year.
+
+3.2 Shortfall. If Distributor fails to meet the annual minimum in any contract year, Supplier may, by written notice given within ninety (90) days of the end of that contract year, convert the appointment under Section 1.1 from exclusive to non-exclusive, or terminate this Agreement under Section 9.2.
+
+4. PRICES AND PAYMENT
+
+4.1 Prices. Prices are those set out in Schedule 2, expressed ex works Stuttgart (Incoterms 2020), exclusive of value added tax.
+
+4.2 Price Changes. Supplier may increase prices once per contract year on not less than one hundred twenty (120) days' written notice, provided that no single increase shall exceed six percent (6%).
+
+4.3 Payment Terms. Distributor shall pay each invoice within sixty (60) days of the invoice date by electronic transfer to the account nominated by Supplier.
+
+4.4 Set-Off. Distributor shall not set off, withhold or deduct any amount from sums payable to Supplier except where a deduction is required by law or has been agreed by Supplier in writing.
+
+5. DELIVERY AND TITLE
+
+5.1 Delivery. Supplier shall use commercially reasonable efforts to deliver Products within the lead times stated in Schedule 1. Lead times are estimates and time is not of the essence as to delivery.
+
+5.2 Retention of Title. Title to Products passes to Distributor only upon payment in full of all sums due in respect of those Products. Risk passes on delivery ex works.
+
+6. WARRANTY
+
+6.1 Product Warranty. Supplier warrants that Products will be free from defects in materials and workmanship for twenty-four (24) months from the date of delivery.
+
+6.2 Remedy. Supplier's sole obligation, and Distributor's exclusive remedy, for breach of the warranty in Section 6.1 is, at Supplier's option, repair of the defective Product, replacement of the defective Product, or refund of the price paid for it.
+
+6.3 Exclusions. The warranty in Section 6.1 does not apply to any Product that has been modified without Supplier's written approval, installed otherwise than in accordance with Supplier's documentation, or subjected to misuse, accident or abnormal operating conditions.
+
+7. INTELLECTUAL PROPERTY
+
+7.1 Ownership. Supplier retains all intellectual property rights in the Products, including all drawings, specifications, firmware and trade marks.
+
+7.2 Licence. Supplier grants Distributor a non-exclusive, non-transferable licence to use Supplier's trade marks in the Territory solely for the purpose of marketing and reselling the Products during the Term.
+
+8. LIABILITY
+
+8.1 Cap. Supplier's total liability to Distributor in any contract year, whether in contract, tort (including negligence) or otherwise, shall not exceed one hundred fifty percent (150%) of the amounts invoiced by Supplier to Distributor in that contract year.
+
+8.2 Excluded Losses. Neither party shall be liable for loss of profit, loss of business, loss of goodwill or any indirect or consequential loss.
+
+8.3 Unlimited Liability. Nothing in this Agreement limits or excludes either party's liability for death or personal injury caused by negligence, for fraud or fraudulent misrepresentation, or for any other liability that cannot lawfully be limited.
+
+9. TERMINATION
+
+9.1 Termination for Convenience. Either party may terminate this Agreement at any time after the third contract year on twelve (12) months' written notice.
+
+9.2 Termination for Cause. Either party may terminate this Agreement with immediate effect by written notice if the other party (a) commits a material breach that it fails to remedy within thirty (30) days of written notice requiring remedy, (b) becomes insolvent, enters administration or has a receiver appointed, or (c) undergoes a change of control to a competitor of the terminating party.
+
+9.3 Consequences. On termination, Distributor shall cease all use of Supplier's trade marks, and Supplier may at its option repurchase Distributor's unsold stock of Products at the price originally invoiced less ten percent (10%).
+
+10. COMPLIANCE
+
+10.1 Anti-Bribery. Each party shall comply with the UK Bribery Act 2010, the German Criminal Code and all other applicable anti-bribery and anti-corruption laws, and shall maintain adequate procedures designed to prevent bribery by its personnel.
+
+10.2 Export Control. Distributor shall not export or re-export any Product in breach of applicable export control or sanctions laws of the European Union, the United Kingdom or the United States.
+
+11. GOVERNING LAW AND JURISDICTION
+
+11.1 Governing Law. This Agreement and any dispute arising out of or in connection with it are governed by English law.
+
+11.2 Jurisdiction. The courts of England and Wales have exclusive jurisdiction to settle any dispute arising out of or in connection with this Agreement.
+
+12. GENERAL
+
+12.1 Notices. Notices must be in writing and sent to the registered office of the recipient, marked for the attention of the Managing Director.
+
+12.2 Assignment. Neither party may assign or transfer this Agreement without the prior written consent of the other party, save that Supplier may assign to a member of its group on written notice to Distributor.
+
+12.3 Entire Agreement. This Agreement, including its Schedules, constitutes the entire agreement between the parties and supersedes all prior negotiations, representations and agreements relating to its subject matter.
+
+SIGNED for and on behalf of CALDER PRECISION COMPONENTS GMBH
+By: /s/ Dr. Anneliese Brandt — Geschaftsfuhrerin — 15 June 2025
+
+SIGNED for and on behalf of RIDGEWAY MARINE SYSTEMS LTD.
+By: /s/ Tomas Oyelaran — Managing Director — 15 June 2025

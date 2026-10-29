@@ -1,0 +1,3 @@
+now that the frontend and backend are in some good shape, can you make the integration between the frontend and backend? I know the frontend was created with mockup data, and the backend is standalone. It built all those APIs as a standalone thing.
+
+Now I want to integrate the frontend with the backend. First and foremost, start creating the integration plan between the frontend and backend in a todo file, let's say integration.todo or integration-TODO.md. Later, if I say okay, then you can start implementing that todo plan. Let me know if you have any questions.
