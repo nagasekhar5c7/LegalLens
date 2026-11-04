@@ -1,0 +1,98 @@
+# Backend: 1 replica on a persistent disk, reachable only inside the cluster.
+#
+# ${ACR_LOGIN_SERVER} and ${IMAGE_TAG} are filled in by envsubst at deploy time
+# (see .github/workflows/cd.yml, or CD_readme.md step 6.4 for doing it by hand).
+# Secrets come from the `backend-secrets` Secret, created once by hand (step 6.2).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-data
+  namespace: legallens
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: managed-csi   # Azure Disk, built into AKS
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: legallens
+spec:
+  replicas: 1                     # SQLite + embedded Qdrant: never more than one
+  revisionHistoryLimit: 5         # kept for `kubectl rollout undo`
+  strategy:
+    type: Recreate                # old pod releases the disk before the new one starts
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      securityContext:
+        fsGroup: 10001            # the image runs as uid 10001; lets it write to the disk
+      containers:
+        - name: backend
+          image: ${ACR_LOGIN_SERVER}/legallens-backend:${IMAGE_TAG}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: backend-secrets
+          env:
+            - name: LL_ENV
+              value: production
+            - name: LL_DATABASE_URL
+              value: sqlite+aiosqlite:////app/data/legallens.db
+            - name: LL_DATA_DIR
+              value: /app/data
+            - name: LL_COOKIE_SECURE
+              value: "false"      # plain HTTP for now; set "true" once TLS is added
+            - name: LL_AI_ENGINE
+              value: orchestrated # or "fixture" if you have no Anthropic key
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              memory: 10Gi
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          startupProbe:           # migrations run at start; allow up to 5 minutes
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: backend-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: legallens
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000

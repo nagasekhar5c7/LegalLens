@@ -1,0 +1,5 @@
+# Every LegalLens object lives in this namespace. Applied first by the CD pipeline.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: legallens

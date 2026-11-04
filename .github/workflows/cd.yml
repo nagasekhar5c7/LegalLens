@@ -1,0 +1,138 @@
+# CD: after CI passes on main, build both images, push them to ACR tagged with
+# the commit SHA, and roll them out to AKS. Setup is in CD_readme.md steps 1-8.
+#
+# Job graph:  images (backend, frontend in parallel) ─> deploy
+name: CD
+
+# Triggers: CI finishing on main, and manual runs from the Actions tab (on main;
+# the Azure trust rule only accepts tokens for refs/heads/main).
+# workflow_run only fires once this file is on the default branch.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. A newer run waits instead of cancelling a rollout halfway.
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+# id-token lets azure/login trade a GitHub OIDC token for an Azure one: no stored password.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: legallensacr
+  ACR_LOGIN_SERVER: legallensacr.azurecr.io
+  RESOURCE_GROUP: rg-legallens
+  CLUSTER_NAME: aks-legallens
+  NAMESPACE: legallens
+  # The exact commit CI tested; for a manual run, the commit it was started on.
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  # Same Dockerfiles and the same GitHub Actions cache as CI's docker job, so
+  # this is mostly cache hits. CI itself never pushes; that stays CD's job.
+  images:
+    name: Image · ${{ matrix.service }} → ACR
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        service: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Docker credentials for the registry, from the Azure login above (AcrPush role).
+      - name: Log in to ACR
+        run: az acr login --name "$ACR_NAME"
+
+      - uses: docker/setup-buildx-action@v3
+
+      # AKS nodes are amd64; pin it so an image is never built for the wrong CPU.
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.ACR_LOGIN_SERVER }}/legallens-${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # Applies k8s/ with the new tag and waits for the pods to become ready.
+  # A rollout that never gets healthy fails this job; the old version keeps its ReplicaSet.
+  deploy:
+    name: Deploy · AKS
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Writes a kubeconfig for the cluster (Azure Kubernetes Service Cluster User Role).
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+
+      # The backend's keys are created by hand (CD_readme.md step 6.2) and never
+      # pass through GitHub. Fail early and clearly if they are missing.
+      - name: Check the backend secret exists
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          if ! kubectl -n "$NAMESPACE" get secret backend-secrets > /dev/null 2>&1; then
+            echo "::error::Secret backend-secrets is missing in namespace $NAMESPACE. Create it once by hand, see CD_readme.md step 6.2."
+            exit 1
+          fi
+
+      # envsubst fills in only these two variables, so nothing else in the YAML changes.
+      - name: Apply manifests with tag ${{ env.IMAGE_TAG }}
+        run: |
+          for f in k8s/backend.yaml k8s/frontend.yaml; do
+            envsubst '${ACR_LOGIN_SERVER} ${IMAGE_TAG}' < "$f" | kubectl apply -f -
+          done
+
+      # Backend uses Recreate and may download models on first start, hence the long wait.
+      - name: Wait for the rollout
+        run: |
+          kubectl -n "$NAMESPACE" rollout status deployment/backend --timeout=15m
+          kubectl -n "$NAMESPACE" rollout status deployment/frontend --timeout=5m
+
+      - name: Deployment summary
+        run: |
+          IP=$(kubectl -n "$NAMESPACE" get service frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          {
+            echo '### Deployed to AKS'
+            echo "- Commit: \`$IMAGE_TAG\`"
+            echo "- App: http://${IP:-<pending>}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Enough to diagnose most failures without opening a terminal.
+      - name: Show pod state
+        if: failure()
+        run: |
+          kubectl -n "$NAMESPACE" get pods -o wide || true
+          kubectl -n "$NAMESPACE" describe pods -l app=backend | tail -n 40 || true
+          kubectl -n "$NAMESPACE" logs deployment/backend --tail=100 || true

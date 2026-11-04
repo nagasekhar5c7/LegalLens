@@ -71,7 +71,7 @@ You do **not** need Docker on your machine for this guide: images are built insi
 | Resource group | `rg-legallens` | Optional |
 | ACR name | `legallensacrXXXX` | **Required.** ACR names are global across all of Azure. Replace `XXXX` with your initials or 4 random digits, lowercase letters and digits only, in **every** command and YAML file below. |
 | AKS cluster | `aks-legallens` | Optional |
-| Node size | `Standard_B4ms` (4 vCPU, 16 GB RAM) | See the note in step 4 |
+| Node size | `Standard_D4s_v4` (4 vCPU, 16 GB RAM) | See the note in step 4 |
 | Kubernetes namespace | `legallens` | Optional |
 
 > **About the commands.** Every `az` and `kubectl` command is written on a single line, so it pastes unchanged into Windows CMD, PowerShell, or a macOS/Linux terminal.
@@ -89,7 +89,7 @@ You do **not** need Docker on your machine for this guide: images are built insi
 - [ ] 6. Deploy LegalLens to AKS by hand and check it works
 - [ ] 7. Create an identity for GitHub Actions
 - [ ] 8. Add the Azure IDs to GitHub as secrets
-- [ ] 9. Build the CD pipeline (later, not part of this step)
+- [ ] 9. Let the CD pipeline deploy every merge to `main`
 - [ ] 10. Know what we left out
 - [ ] 11. Clean up when you are done
 
@@ -133,8 +133,14 @@ az provider show --namespace Microsoft.ContainerService --query registrationStat
 
 Wait until the last command prints `"Registered"`.
 
-> **Quota check (free trial and student accounts).** These accounts are often limited to **4 vCPUs per region**.
-> Our single `Standard_B4ms` node uses exactly 4, so it fits. A bigger node, or a second node, will be refused with a quota error.
+> **Quota check (free trial and student accounts).** Azure limits vCPUs **per VM family, per region**, and some families are set to **0** on these accounts.
+> Our single `Standard_D4s_v4` node needs 4 vCPUs in the **Standard DSv4 Family**. Check before step 4:
+>
+> ```
+> az vm list-usage --location eastus --output table
+> ```
+>
+> Look at the `Limit` column for `Standard DSv4 Family vCPUs` and `Total Regional vCPUs`. Both need at least 4 free. A bigger node, or a second node, will be refused with a quota error.
 
 ---
 
@@ -183,8 +189,15 @@ We leave the **admin user disabled**. AKS gets pull access through its managed i
 ### Choosing the node size
 
 The backend loads two AI models (`bge-m3` and `bge-reranker-v2-m3`, about 2.2 GB each) into memory, on CPU.
-That needs a node with **16 GB of RAM**. `Standard_B4ms` is the cheapest common size with 16 GB.
-If it is not available in your region, use `Standard_D4s_v5` instead (also 4 vCPU, 16 GB).
+That needs a node with **16 GB of RAM**. We use `Standard_D4s_v4` (4 vCPU, 16 GB, Intel), about $0.19 per hour in `eastus`.
+
+> **Why not a B-series size?** They are cheaper, but on free and student subscriptions they often fail:
+> `Standard_B4ms` with `The VM size of Standard_B4ms is not allowed in your subscription`, and `Standard_B4s_v2` with `Insufficient vcpu quota requested 4, remaining 0 for family standardBsv2Family`.
+>
+> If `Standard_D4s_v4` also fails, run the `az vm list-usage` command from step 1 and pick another 4 vCPU / 16 GB size whose family shows a limit of at least 4, for example `Standard_D4as_v4` (DASv4 family) or `Standard_D4s_v6` (Dsv6 family).
+> Avoid names with **`p`** (for example `d4ps_v5`: Arm CPUs, our amd64 images will not start) and names with **`l`** (for example `d4ls_v5`: only 8 GB RAM).
+>
+> The node costs money while it runs. Stop the cluster when you are not using it: `az aks stop --resource-group rg-legallens --name aks-legallens` (and `az aks start` to resume).
 
 ### Web interface
 
@@ -197,7 +210,7 @@ If it is not available in your region, use `Standard_D4s_v5` instead (also 4 vCP
    - **Pricing tier:** `Free`
    - **Authentication and Authorization:** `Local accounts with Kubernetes RBAC`
 3. **Node pools** tab: click the `agentpool` (or `nodepool1`) row and set:
-   - **Node size:** `Standard_B4ms`
+   - **Node size:** `Standard_D4s_v4`
    - **Scale method:** `Manual`, **Node count:** `1`
 4. **Integrations** tab: **Container registry** → select `legallensacrXXXX`.
    This is what lets the cluster pull our images without a password.
@@ -207,11 +220,69 @@ If it is not available in your region, use `Standard_D4s_v5` instead (also 4 vCP
 
 ### Azure CLI
 
+macOS / Linux:
+
+```bash
+az aks create \
+  --resource-group  rg-legallens \
+  --name            aks-legallens \
+  --tier            free \
+  --node-count      1 \
+  --node-vm-size    Standard_D4s_v4 \
+  --attach-acr      legallensacrXXXX \
+  --generate-ssh-keys
 ```
-az aks create --resource-group rg-legallens --name aks-legallens --tier free --node-count 1 --node-vm-size Standard_B4ms --attach-acr legallensacrXXXX --generate-ssh-keys
+
+Windows CMD or PowerShell (the same command on one line):
+
+```
+az aks create --resource-group rg-legallens --name aks-legallens --tier free --node-count 1 --node-vm-size Standard_D4s_v4 --attach-acr legallensacrXXXX --generate-ssh-keys
 ```
 
 `--attach-acr` gives the cluster's identity the **AcrPull** role on the registry.
+
+| Flag | Value | Meaning |
+|---|---|---|
+| `--resource-group` | `rg-legallens` | The resource group the cluster goes into |
+| `--name` | `aks-legallens` | The cluster's name |
+| `--tier` | `free` | Free control plane; you pay only for the node VM |
+| `--node-count` | `1` | Number of worker machines (nodes) |
+| `--node-vm-size` | `Standard_D4s_v4` | Size of each node: 4 vCPU, 16 GB RAM |
+| `--attach-acr` | `legallensacrXXXX` | Lets the cluster pull images from our registry without a password |
+| `--generate-ssh-keys` | (none) | Uses your key in `~/.ssh`, or creates one if missing |
+
+`--attach-acr` needs your **real** registry name, not `legallensacrXXXX`. If you do not remember it, list the registries in the resource group:
+
+```
+az acr list --resource-group rg-legallens --query "[].name" --output tsv
+```
+
+If this prints nothing, the registry does not exist yet. Go back to step 3.
+
+#### If it fails with `MissingSubscriptionRegistration`
+
+```
+(MissingSubscriptionRegistration) The subscription is not registered to use namespace 'Microsoft.ContainerService'.
+```
+
+The resource providers from step 1 are not registered yet. Register them, wait, then run `az aks create` again:
+
+```
+az provider register --namespace Microsoft.ContainerService
+az provider register --namespace Microsoft.ContainerRegistry
+az provider show --namespace Microsoft.ContainerService --query registrationState --output tsv
+```
+
+Repeat the last command until it prints `Registered` (not `Registering`). This usually takes a few minutes.
+
+#### Check the cluster
+
+```
+az aks show --resource-group rg-legallens --name aks-legallens --query "{name:name, state:provisioningState, power:powerState.code, k8s:kubernetesVersion, location:location}" --output table
+az resource list --resource-group rg-legallens --query "[].{name:name, type:type}" --output table
+```
+
+The first should show `state` as `Succeeded` and `power` as `Running`. The second lists everything in the resource group.
 
 ### Connect kubectl to the cluster (needed for both ways)
 
@@ -304,176 +375,52 @@ Namespace `legallens`, name `backend-secrets`, then add the same four keys and v
 No Anthropic API key? Leave `ANTHROPIC_API_KEY` out and set `LL_AI_ENGINE` to `fixture` in the backend YAML below.
 The app then answers from built-in sample responses instead of Claude.
 
-### 6.3 Write the Kubernetes manifests
+### 6.3 The Kubernetes manifests
 
-Create a folder `k8s/` at the repository root with these two files.
-In both, replace `legallensacrXXXX` with your registry name.
+The manifests live in the `k8s/` folder at the repository root. The CD pipeline (step 9) applies the same files.
 
-**`k8s/backend.yaml`**
+| File | What it creates |
+|---|---|
+| `k8s/namespace.yaml` | The `legallens` namespace |
+| `k8s/backend.yaml` | The 20 GB disk (`PersistentVolumeClaim`), the backend `Deployment` (1 replica, `Recreate`) and its `ClusterIP` service |
+| `k8s/frontend.yaml` | The frontend `Deployment` and its `LoadBalancer` service with a public IP |
 
-```yaml
-# Backend: 1 replica on a persistent disk, reachable only inside the cluster.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: backend-data
-  namespace: legallens
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: managed-csi   # Azure Disk, built into AKS
-  resources:
-    requests:
-      storage: 20Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: backend
-  namespace: legallens
-spec:
-  replicas: 1                     # SQLite + embedded Qdrant: never more than one
-  strategy:
-    type: Recreate                # old pod releases the disk before the new one starts
-  selector:
-    matchLabels:
-      app: backend
-  template:
-    metadata:
-      labels:
-        app: backend
-    spec:
-      securityContext:
-        fsGroup: 10001            # the image runs as uid 10001; lets it write to the disk
-      containers:
-        - name: backend
-          image: legallensacrXXXX.azurecr.io/legallens-backend:v1
-          ports:
-            - containerPort: 8000
-          envFrom:
-            - secretRef:
-                name: backend-secrets
-          env:
-            - name: LL_ENV
-              value: production
-            - name: LL_DATABASE_URL
-              value: sqlite+aiosqlite:////app/data/legallens.db
-            - name: LL_DATA_DIR
-              value: /app/data
-            - name: LL_COOKIE_SECURE
-              value: "false"      # plain HTTP for now; set "true" once TLS is added
-            - name: LL_AI_ENGINE
-              value: orchestrated # or "fixture" if you have no Anthropic key
-          resources:
-            requests:
-              cpu: "1"
-              memory: 4Gi
-            limits:
-              memory: 10Gi
-          volumeMounts:
-            - name: data
-              mountPath: /app/data
-          startupProbe:           # migrations run at start; allow up to 5 minutes
-            httpGet:
-              path: /healthz
-              port: 8000
-            periodSeconds: 10
-            failureThreshold: 30
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: 8000
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8000
-            periodSeconds: 30
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: backend-data
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend
-  namespace: legallens
-spec:
-  type: ClusterIP
-  selector:
-    app: backend
-  ports:
-    - port: 8000
-      targetPort: 8000
-```
-
-**`k8s/frontend.yaml`**
+The image lines are templates, not fixed names:
 
 ```yaml
-# Frontend: nginx serves the web app and proxies /api to the backend service.
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: frontend
-  namespace: legallens
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: frontend
-  template:
-    metadata:
-      labels:
-        app: frontend
-    spec:
-      containers:
-        - name: frontend
-          image: legallensacrXXXX.azurecr.io/legallens-frontend:v1
-          ports:
-            - containerPort: 8080
-          env:
-            - name: BACKEND_URL
-              value: http://backend:8000   # the backend Service's in-cluster name
-          resources:
-            requests:
-              cpu: 100m
-              memory: 64Mi
-          readinessProbe:
-            httpGet:
-              path: /nginx-health
-              port: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend
-  namespace: legallens
-spec:
-  type: LoadBalancer              # Azure assigns a public IP
-  selector:
-    app: frontend
-  ports:
-    - port: 80
-      targetPort: 8080
+image: ${ACR_LOGIN_SERVER}/legallens-backend:${IMAGE_TAG}
 ```
+
+`envsubst` fills in the two variables when the files are applied, so the registry name and tag are never edited by hand and every deploy points to one exact image.
+The pipeline uses the commit SHA as the tag. By hand we use the `v1` images from step 5.
 
 Because nginx forwards `/api` to the backend, the browser only ever talks to one address.
 The session cookie and CORS settings therefore need no changes.
 
 ### 6.4 Apply the manifests
 
-**CLI** (from the repository root):
+**CLI** (macOS / Linux, from the repository root; replace `legallensacrXXXX`):
 
 ```
-kubectl apply -f k8s/backend.yaml
-kubectl apply -f k8s/frontend.yaml
+export ACR_LOGIN_SERVER=legallensacrXXXX.azurecr.io IMAGE_TAG=v1
+kubectl apply -f k8s/namespace.yaml
+envsubst '${ACR_LOGIN_SERVER} ${IMAGE_TAG}' < k8s/backend.yaml | kubectl apply -f -
+envsubst '${ACR_LOGIN_SERVER} ${IMAGE_TAG}' < k8s/frontend.yaml | kubectl apply -f -
 kubectl get pods --namespace legallens --watch
 ```
 
+`envsubst` comes with Git for Windows (Git Bash) and with `brew install gettext` on macOS. On Windows, run these lines in Git Bash.
+
 Wait until both pods show `1/1 Running`, then press Ctrl+C.
 
+Check a file before applying it, without changing the cluster:
+
+```
+envsubst '${ACR_LOGIN_SERVER} ${IMAGE_TAG}' < k8s/backend.yaml | kubectl apply --dry-run=server -f -
+```
+
 **Web interface:** open the cluster → **Kubernetes resources → Workloads → Create → Apply a YAML**.
-Paste the contents of `k8s/backend.yaml`, click **Add**, then do the same for `k8s/frontend.yaml`.
+Paste `k8s/namespace.yaml` and click **Add**. Then paste `k8s/backend.yaml`, replace the two `${...}` values in the `image:` line by hand, and click **Add**. Do the same for `k8s/frontend.yaml`.
 Watch the pods under **Workloads → Pods**, with the namespace filter set to `legallens`.
 
 ### 6.5 Open the app
@@ -623,19 +570,53 @@ The pipeline never needs to see them.
 
 ---
 
-## 9. Build the CD pipeline (later)
+## 9. The CD pipeline
 
-**Not part of this step.** Once the manual deploy in step 6 works, the pipeline repeats steps 5 and 6.4 on every merge to `main`.
-The plan for `.github/workflows/cd.yml`:
+`.github/workflows/cd.yml` repeats steps 5 and 6.4 on every merge to `main`, after CI passes.
 
-- [ ] Run only after CI succeeds on `main` (trigger: `workflow_run` on the `CI` workflow, conclusion `success`), plus `workflow_dispatch` for manual runs
-- [ ] Ask for an OIDC token: `permissions: id-token: write, contents: read`
-- [ ] Log in to Azure with `azure/login`, using the three secrets from step 8
-- [ ] Build and push both images with `az acr build`, tagged with the commit SHA (not `latest`, so every deploy is traceable and easy to roll back)
-- [ ] Connect to the cluster with `az aks get-credentials`
-- [ ] Apply `k8s/*.yaml`, then point each deployment at the new tag with `kubectl set image`
-- [ ] Wait with `kubectl rollout status` for both deployments, so a broken deploy fails the pipeline
-- [ ] Rolling back by hand: `kubectl rollout undo deployment/backend --namespace legallens`
+```
+ CI passes on main
+        │
+        ▼
+ images (backend and frontend in parallel)
+   azure/login with OIDC → az acr login → docker build → push legallens-<service>:<commit SHA>
+        │
+        ▼
+ deploy
+   aks-set-context → apply k8s/namespace.yaml → check backend-secrets exists
+   → envsubst + kubectl apply k8s/*.yaml → kubectl rollout status
+```
+
+| Part | What it does |
+|---|---|
+| Trigger | `workflow_run` on the `CI` workflow, only when it succeeded on `main`. Also **Actions → CD → Run workflow** for a manual run on `main`. |
+| Login | `azure/login` with the three secrets from step 8. GitHub's OIDC token must match the federated credential `repo:<owner>/LegalLens:ref:refs/heads/main`, so manual runs from other branches are refused by Azure. |
+| Images | Built on the GitHub runner with the same Dockerfiles and the same build cache as CI, for `linux/amd64`, then pushed to ACR. |
+| Tag | The commit SHA that CI tested, for example `legallens-backend:3f9c2e1…`. There is no `latest` tag: every pod points to one exact commit. |
+| Deploy | Applies `k8s/` with that tag. Kubernetes only rolls out when the tag changes, so each new commit always triggers a rollout. |
+| Wait | `kubectl rollout status`, up to 15 minutes for the backend (it may download models) and 5 for the frontend. A deploy that never gets healthy fails the job. |
+| Result | The job summary shows the commit and the app's `http://<public IP>`. On failure, it prints the pod state and the backend's last log lines. |
+
+**Before the first run:**
+
+- [ ] Steps 6.1 and 6.2 are done: the `backend-secrets` secret exists. The pipeline checks this and stops with a clear error if it is missing. It never sees the secret values.
+- [ ] Steps 7 and 8 are done: the identity, its two roles and the three GitHub secrets.
+- [ ] In `.github/workflows/cd.yml`, `ACR_NAME` and `ACR_LOGIN_SERVER` match your registry.
+- [ ] `cd.yml` is merged into `main`. GitHub only runs a `workflow_run` trigger from the default branch.
+
+**Expect a short outage on each deploy.** The backend uses `Recreate`: the old pod stops and releases the disk before the new one starts, so the API is down for a minute or two.
+
+**Roll back** to the previous version:
+
+```
+kubectl rollout undo deployment/backend --namespace legallens
+kubectl rollout undo deployment/frontend --namespace legallens
+```
+
+The next merge to `main` deploys its own commit again.
+
+> **Why plain YAML and not Helm?** We have two services and one environment, so there is nothing to template except the image tag, and `envsubst` does that.
+> Helm or Kustomize start to pay off once there is a second environment (staging) with different values.
 
 ---
 
