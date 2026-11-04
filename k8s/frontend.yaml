@@ -1,0 +1,49 @@
+# Frontend: nginx serves the web app and proxies /api to the backend service.
+#
+# ${ACR_LOGIN_SERVER} and ${IMAGE_TAG} are filled in by envsubst at deploy time
+# (see .github/workflows/cd.yml, or CD_readme.md step 6.4 for doing it by hand).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: legallens
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5         # kept for `kubectl rollout undo`
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ${ACR_LOGIN_SERVER}/legallens-frontend:${IMAGE_TAG}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BACKEND_URL
+              value: http://backend:8000   # the backend Service's in-cluster name
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: legallens
+spec:
+  type: LoadBalancer              # Azure assigns a public IP
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 8080
