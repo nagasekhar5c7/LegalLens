@@ -43,6 +43,19 @@ what `docker-compose.yml` does. That path works, but note the cookie is `SameSit
 `127.0.0.1:5173 → localhost:8000`, which presents as a successful login followed by 401s on
 everything. Prefer the proxy locally.
 
+### In CI and in production
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs ESLint and `npm run build` — which
+type-checks via `tsc --noEmit` — on every pull request into `main`.
+
+The [`Dockerfile`](Dockerfile) is a third way the app reaches the backend, distinct from the two
+above: Node builds the static bundle and **nginx serves it** with no Node at runtime, proxying
+`/api`, `/healthz` and `/readyz` to `BACKEND_URL` so the app stays same-origin and the
+`SameSite=Lax` cookie keeps working — which is why `VITE_API_BASE_URL` is left empty for the image.
+The container is unprivileged and listens on **8080**, with `/nginx-health` for the readiness probe.
+In AKS ([`k8s/frontend.yaml`](../k8s/frontend.yaml)) it sits behind a public LoadBalancer and points
+at the in-cluster `backend:8000`. The full deploy is in [CD_readme.md](../CD_readme.md).
+
 ## Where things are
 
 ```
