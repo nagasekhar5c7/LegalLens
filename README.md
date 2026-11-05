@@ -38,6 +38,8 @@ watch it decline, naming what it searched for and why that fell short.
 backend/     FastAPI · Pydantic v2 · SQLAlchemy 2.0 async + SQLite · Alembic · uv
 frontend/    React 19 · TypeScript · Vite · Tailwind v4 · zustand · Radix
 docs/        BRD/PRD/FRD, glossary, technical architecture
+k8s/         AKS manifests — namespace, backend (PVC + ClusterIP), frontend (nginx + LoadBalancer)
+.github/     CI on every PR; CD to Azure (ACR → AKS) on merge to main
 ```
 
 Each has its own README: [backend](backend/README.md) for the API, the data model and what M4
@@ -91,3 +93,26 @@ make index src=../docs                             # embed a corpus into Qdrant
 make turn q="What happens on a change of control?"  # one turn through the real engine
 make turn q="Summarise it" mode=summary
 ```
+
+## CI and deployment
+
+Every pull request into `main`, and `main` itself, runs
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml): the backend's ruff, `mypy --strict`,
+OpenAPI-freshness and `pytest` (with coverage) checks, the frontend's ESLint and type-checked
+production build, then a build of both Docker images to prove they still assemble. It is the same
+surface as `make check` and `npm run build`, run on a clean machine. Nothing is pushed and no secret
+is needed — that stays CD's job.
+
+Once CI passes on `main`, [`.github/workflows/cd.yml`](.github/workflows/cd.yml) builds both images,
+pushes them to Azure Container Registry tagged with the exact commit SHA, and rolls them out to AKS
+from the manifests in [`k8s/`](k8s/). It authenticates by GitHub OIDC, so no Azure password is
+stored; deploys run one at a time, and a rollout that never becomes healthy fails the job while the
+previous version keeps serving.
+
+The cluster runs one backend pod — SQLite plus an embedded Qdrant own their files exclusively, so
+it is `Recreate` over a single 20 GB Azure Disk, never more than one replica — behind a ClusterIP,
+and an nginx frontend that serves the built bundle and proxies `/api` to it, exposed on a public
+LoadBalancer IP. `LL_BLOB_KEY` and `LL_SECRET_KEY` live in a Kubernetes Secret created once by hand,
+never through GitHub. The whole one-time Azure setup — account, resource group, registry, cluster,
+that secret, and the GitHub OIDC identity — is written out step by step in
+[CD_readme.md](CD_readme.md).

@@ -349,6 +349,24 @@ shortcut cannot hide schema drift.
 
 ---
 
+## In CI and in production
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs the four checks above (ruff,
+`mypy --strict`, OpenAPI freshness, `pytest` with coverage) on every pull request into `main` — the
+same commands on a clean machine, installed with `uv sync --frozen --extra dev --extra ai` and an
+empty `ANTHROPIC_API_KEY` so the suite stays offline against its fakes.
+
+The [`Dockerfile`](Dockerfile) ships the `ai` extra, runs as uid 10001 writing only to `/app/data`,
+and runs `alembic upgrade head` before uvicorn so a fresh volume comes up usable. In AKS
+([`k8s/backend.yaml`](../k8s/backend.yaml)) that data directory is a 20 Gi Azure Disk, and the
+Deployment is pinned to **one replica with a `Recreate` strategy** — SQLite and the embedded Qdrant
+own their files exclusively, so a second pod cannot share the disk and the old pod must release it
+before the new one starts. `LL_BLOB_KEY` and `LL_SECRET_KEY` come from a `backend-secrets` Secret
+created once by hand and never passed through GitHub; the CD job refuses to deploy if it is missing.
+The full deploy is in [CD_readme.md](../CD_readme.md).
+
+---
+
 ## Integrating the frontend
 
 The frontend currently resolves everything from `src/mocks/`. To point it here:
