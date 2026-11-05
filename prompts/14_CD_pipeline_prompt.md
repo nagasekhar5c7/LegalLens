@@ -9,4 +9,4 @@ Let me know if you have any questions at this point in time. If not, give me the
 2. you can do that
 3. you can go automatically
 
-implment 1,2,3 that you mentioned above
+implment 1,2,3 that you mentioned above.

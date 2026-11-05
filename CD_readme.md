@@ -363,10 +363,46 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 > **Keep `LL_BLOB_KEY` somewhere safe.** Every uploaded document is encrypted with it. If you lose it, every stored document is lost.
 
-**CLI** (one line; replace the four values):
+**CLI, macOS / Linux (zsh).** Paste these lines one at a time. They generate the two keys for you and ask for the API key and the demo password without showing them on screen or saving them in your shell history:
+
+```zsh
+kubectl create namespace legallens 2>/dev/null || true
+LL_BLOB_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+LL_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+read -s "ANTHROPIC_API_KEY?Anthropic API key: "; echo
+read -s "LL_SEED_PASSWORD?Password for the demo user: "; echo
+kubectl create secret generic backend-secrets --namespace legallens --from-literal=LL_BLOB_KEY="$LL_BLOB_KEY" --from-literal=LL_SECRET_KEY="$LL_SECRET_KEY" --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" --from-literal=LL_SEED_PASSWORD="$LL_SEED_PASSWORD"
+```
+
+In bash, use `read -s -p "Anthropic API key: " ANTHROPIC_API_KEY` instead of the zsh `read` lines.
+
+**CLI, Windows** (one line; replace the four values):
 
 ```
 kubectl create secret generic backend-secrets --namespace legallens --from-literal=LL_BLOB_KEY=<first value> --from-literal=LL_SECRET_KEY=<second value> --from-literal=ANTHROPIC_API_KEY=<your sk-ant-... key> --from-literal=LL_SEED_PASSWORD=<a password for the demo user>
+```
+
+> **`zsh: parse error near '\n'`** means a `<...>` placeholder was left in the command. The shell reads `<` and `>` as file redirection. Replace every placeholder, angle brackets included, or use the zsh lines above.
+>
+> **Never paste a real API key into a chat, a screenshot or a shared terminal log.** If that happens, revoke it in the Anthropic Console and create a new one.
+
+Check the secret. This lists the four key names and their sizes, not the values:
+
+```
+kubectl describe secret backend-secrets --namespace legallens
+```
+
+Copy `LL_BLOB_KEY` into a password manager now. You can read it back from the cluster later:
+
+```zsh
+kubectl get secret backend-secrets --namespace legallens -o jsonpath='{.data.LL_BLOB_KEY}' | base64 -d; echo
+```
+
+Made a typo? Delete the secret, run the `kubectl create secret` line above again, then restart the backend so it reads the new values (the restart only matters once the backend is deployed):
+
+```
+kubectl delete secret backend-secrets --namespace legallens
+kubectl rollout restart deployment/backend --namespace legallens
 ```
 
 **Web interface:** open the cluster → **Kubernetes resources → Configuration → Secrets → Create → Secret**.
@@ -445,7 +481,17 @@ The database starts empty. Create the demo user and the sample documents:
 kubectl exec --namespace legallens deploy/backend -- python -m app.seed
 ```
 
-It prints the email and password to sign in with. The password is the `LL_SEED_PASSWORD` you put in the secret.
+It logs one line per sample document, then prints the email (`dana@example.com`) and password to sign in with. The password is the `LL_SEED_PASSWORD` you put in the secret.
+Ignore the `curl localhost:8000` examples it prints: they are for running the backend on your laptop. In the cluster, sign in at `http://<EXTERNAL-IP>`.
+
+> **Run the seed before you try to sign in.** Until then the user does not exist and the login page says *That email and password do not match an account*.
+> Running the seed again is safe: it skips the user and documents that already exist, and it does **not** change an existing user's password.
+
+Forgot the password? Read it back from the secret:
+
+```zsh
+kubectl get secret backend-secrets --namespace legallens -o jsonpath='{.data.LL_SEED_PASSWORD}' | base64 -d; echo
+```
 
 > **First question is slow.** The AI models (about 4 GB) download to the disk the first time they are needed.
 > The first upload or question can take several minutes. Later restarts reuse the downloaded copy.
@@ -458,6 +504,8 @@ It prints the email and password to sign in with. The password is the `LL_SEED_P
 | `ImagePullBackOff` | `kubectl describe pod --namespace legallens -l app=backend` | Wrong ACR name in the YAML, or the cluster was created without `--attach-acr`. Fix with `az aks update --resource-group rg-legallens --name aks-legallens --attach-acr legallensacrXXXX` |
 | `CrashLoopBackOff` | `kubectl logs --namespace legallens deploy/backend` | A missing secret value; the log names it |
 | Page loads but sign-in fails | `kubectl logs --namespace legallens deploy/frontend` | The backend is not ready yet, or `BACKEND_URL` is wrong |
+| *That email and password do not match an account* | `kubectl exec --namespace legallens deploy/backend -- python -m app.seed` | The seed has not run yet (step 6.6), or the password is not the `LL_SEED_PASSWORD` from the secret |
+| `zsh: parse error near '\n'` | (none) | A `<...>` placeholder is still in the command (step 6.2) |
 
 ---
 
@@ -519,6 +567,10 @@ Add the trust rule:
 ```
 az ad app federated-credential create --id <appId> --parameters github-credentials.json
 ```
+
+> **If the pipeline fails with `AADSTS700213: No matching federated identity record found`.** Newer GitHub repositories send the subject with numeric IDs, for example
+> `repo:<owner>@49059857/LegalLens@1397180072:ref:refs/heads/main`. The failed `azure/login` step prints the exact value under **subject claim**.
+> Add a second credential with that subject (a new `name`, for example `github-main-ids`, and the subject copied exactly), using the same command. Keeping both is fine.
 
 Look up the IDs of the registry and the cluster, and copy each one:
 

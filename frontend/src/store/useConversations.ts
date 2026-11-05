@@ -13,6 +13,7 @@ import type {
 import { api } from '@/api/client'
 import { isAbort, toApiError } from '@/api/http'
 import { titleFromQuestion } from '@/lib/format'
+import { randomId } from '@/lib/random'
 import { useComposer } from './useComposer'
 import { useEvidence } from './useEvidence'
 import { useUi } from './useUi'
@@ -241,7 +242,7 @@ export const useConversations = create<ConversationState>((set, get) => ({
         // One fresh key per send. `regenerate` therefore gets its own, which is
         // the point: reusing a key would replay the old answer instead of
         // producing a new one.
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: randomId(),
         /* The server's persisted ids, which arrive with the response headers
            before the first token. Rewriting by id (never by index) keeps this
            correct if the user has queued other work in between. */
